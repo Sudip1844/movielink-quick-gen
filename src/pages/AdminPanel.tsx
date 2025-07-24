@@ -142,17 +142,17 @@ const AdminPanel = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-admin-header text-admin-header-foreground p-4 shadow-sm">
-        <div className="max-w-6xl mx-auto flex justify-between items-center">
-          <h1 className="text-xl font-bold">MovieZone Admin Panel</h1>
+      <header className="bg-primary text-primary-foreground p-4 shadow-sm">
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-4">
+          <h1 className="text-lg md:text-xl font-bold truncate">Admin Panel</h1>
           <Button 
-            variant="outline" 
+            variant="secondary" 
             size="sm" 
             onClick={handleLogout}
-            className="border-admin-header-foreground text-admin-header-foreground hover:bg-admin-header-foreground hover:text-admin-header"
+            className="flex items-center gap-2 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 border border-primary-foreground/20"
           >
-            <LogOut className="w-4 h-4 mr-2" />
-            Logout
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Logout</span>
           </Button>
         </div>
       </header>
@@ -248,30 +248,37 @@ const AdminPanel = () => {
             {/* Search and Sort */}
             <Card>
               <CardContent className="p-4 space-y-4">
-                <div className="flex gap-4 flex-wrap">
-                  <div className="flex-1 min-w-64">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1 min-w-0">
                     <Input
                       placeholder="Search by movie name..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Button
                       variant={sortBy === "name" ? "default" : "outline"}
                       onClick={() => setSortBy("name")}
+                      size="sm"
+                      className="flex-1 sm:flex-none"
                     >
-                      Sort by Name
+                      <span className="sm:hidden">Name</span>
+                      <span className="hidden sm:inline">Sort by Name</span>
                     </Button>
                     <Button
                       variant={sortBy === "date" ? "default" : "outline"}
                       onClick={() => setSortBy("date")}
+                      size="sm"
+                      className="flex-1 sm:flex-none"
                     >
-                      Sort by Date
+                      <span className="sm:hidden">Date</span>
+                      <span className="hidden sm:inline">Sort by Date</span>
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
+                      size="sm"
                     >
                       {sortOrder === "asc" ? "↑" : "↓"}
                     </Button>
@@ -285,36 +292,36 @@ const AdminPanel = () => {
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Movie Name</TableHead>
-                        <TableHead>Original Link</TableHead>
-                        <TableHead>Short Link</TableHead>
-                        <TableHead>Views</TableHead>
-                        <TableHead>Date Added</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
+                     <TableHeader>
+                       <TableRow>
+                         <TableHead className="min-w-[150px]">Movie Name</TableHead>
+                         <TableHead className="hidden md:table-cell min-w-[200px]">Original Link</TableHead>
+                         <TableHead className="min-w-[100px]">Short Link</TableHead>
+                         <TableHead className="hidden sm:table-cell">Views</TableHead>
+                         <TableHead className="hidden lg:table-cell">Date Added</TableHead>
+                         <TableHead className="w-[80px]">Actions</TableHead>
+                       </TableRow>
+                     </TableHeader>
                     <TableBody>
                       {filteredLinks.map((link) => (
-                        <TableRow key={link.id}>
-                          <TableCell className="font-medium">{link.movieName}</TableCell>
-                          <TableCell className="max-w-64 truncate">{link.originalLink}</TableCell>
-                          <TableCell>
-                            <code className="text-sm">/m/{link.shortId}</code>
-                          </TableCell>
-                          <TableCell>{link.views}</TableCell>
-                          <TableCell>{new Date(link.dateAdded).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleDeleteLink(link.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
+                         <TableRow key={link.id}>
+                           <TableCell className="font-medium">{link.movieName}</TableCell>
+                           <TableCell className="hidden md:table-cell max-w-64 truncate">{link.originalLink}</TableCell>
+                           <TableCell>
+                             <code className="text-sm">/m/{link.shortId}</code>
+                           </TableCell>
+                           <TableCell className="hidden sm:table-cell">{link.views}</TableCell>
+                           <TableCell className="hidden lg:table-cell">{new Date(link.dateAdded).toLocaleDateString()}</TableCell>
+                           <TableCell>
+                             <Button
+                               variant="destructive"
+                               size="sm"
+                               onClick={() => handleDeleteLink(link.id)}
+                             >
+                               <Trash2 className="w-4 h-4" />
+                             </Button>
+                           </TableCell>
+                         </TableRow>
                       ))}
                     </TableBody>
                   </Table>
