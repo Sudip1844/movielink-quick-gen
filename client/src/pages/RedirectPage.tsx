@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { useRoute, useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 const RedirectPage = () => {
   const [match, params] = useRoute("/m/:id");
   const [, setLocation] = useLocation();
-  const [countdown, setCountdown] = useState(10);
-  const [showScrollMessage, setShowScrollMessage] = useState(false);
+  const [countdown, setCountdown] = useState(15);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [showContinueButton, setShowContinueButton] = useState(false);
+  const [continueButtonDelay, setContinueButtonDelay] = useState(10);
 
   const id = params?.id;
 
@@ -48,6 +48,7 @@ const RedirectPage = () => {
     }
   }, [movieLink, updateViewsMutation]);
 
+  // Timer countdown effect
   useEffect(() => {
     if (!movieLink?.adsEnabled) return;
 
@@ -55,45 +56,64 @@ const RedirectPage = () => {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else {
-      setShowScrollMessage(true);
+      // Timer finished - show scroll button and start continue button delay
+      setShowScrollButton(true);
+      setShowContinueButton(true);
+      
+      // Continue button delay countdown
+      const delayInterval = setInterval(() => {
+        setContinueButtonDelay(prev => {
+          if (prev <= 1) {
+            clearInterval(delayInterval);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+      return () => clearInterval(delayInterval);
     }
   }, [countdown, movieLink?.adsEnabled]);
 
   const handleContinue = () => {
-    if (movieLink) {
+    if (movieLink && continueButtonDelay === 0) {
       window.location.href = movieLink.originalLink;
+    }
+  };
+
+  const scrollToBottom = () => {
+    const downloadSection = document.getElementById('downloadSection');
+    if (downloadSection) {
+      downloadSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    } else {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
     }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <h1 className="text-2xl font-bold mb-4">Loading...</h1>
-            <p className="text-muted-foreground">
-              Fetching your link...
-            </p>
-          </CardContent>
-        </Card>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)' }}>
+          <h1 style={{ fontSize: '2rem', marginBottom: '15px', color: '#333' }}>Loading...</h1>
+          <p style={{ color: '#666', fontSize: '1.1rem' }}>Fetching your link...</p>
+        </div>
       </div>
     );
   }
 
   if (!movieLink) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <h1 className="text-2xl font-bold mb-4">Link Not Found</h1>
-            <p className="text-muted-foreground mb-4">
-              The requested link could not be found.
-            </p>
-            <Button onClick={() => setLocation("/")}>
-              Go to Home
-            </Button>
-          </CardContent>
-        </Card>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)' }}>
+          <h1 style={{ fontSize: '2rem', marginBottom: '15px', color: '#333' }}>Link Not Found</h1>
+          <p style={{ color: '#666', fontSize: '1.1rem', marginBottom: '25px' }}>The requested link could not be found.</p>
+          <button 
+            onClick={() => setLocation("/")}
+            style={{ background: 'linear-gradient(45deg, #007bff, #0056b3)', color: 'white', border: 'none', padding: '15px 30px', fontSize: '1.1rem', borderRadius: '25px', cursor: 'pointer' }}
+          >
+            Go to Home
+          </button>
+        </div>
       </div>
     );
   }
@@ -101,123 +121,212 @@ const RedirectPage = () => {
   // If ads are disabled, show loading message while redirecting
   if (!movieLink.adsEnabled) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Card>
-          <CardContent className="p-8 text-center">
-            <h1 className="text-2xl font-bold mb-4">Redirecting...</h1>
-            <p className="text-muted-foreground">
-              You will be redirected to {movieLink.movieName} shortly.
-            </p>
-          </CardContent>
-        </Card>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+        <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)' }}>
+          <h1 style={{ fontSize: '2rem', marginBottom: '15px', color: '#333' }}>Redirecting...</h1>
+          <p style={{ color: '#666', fontSize: '1.1rem' }}>
+            You will be redirected to {movieLink.movieName} shortly.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-admin-header text-admin-header-foreground p-4 text-center">
-        <h1 className="text-xl font-bold">MovieZone</h1>
-      </header>
+    <div style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', minHeight: '100vh', color: '#333', overflowX: 'hidden' }}>
+      
+      {/* Timer Section */}
+      {countdown > 0 && (
+        <div style={{ width: '100%', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '30px 20px', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
+          <div style={{ 
+            width: '120px', 
+            height: '120px', 
+            borderRadius: '50%', 
+            background: 'linear-gradient(45deg, #28a745, #20c997)', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            position: 'relative', 
+            marginBottom: '20px', 
+            boxShadow: '0 8px 30px rgba(0,0,0,0.3)' 
+          }}>
+            <div style={{ 
+              width: '120px', 
+              height: '120px', 
+              borderRadius: '50%', 
+              background: 'white', 
+              position: 'absolute',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <div style={{ fontSize: '2.5em', fontWeight: 'bold', color: '#667eea', zIndex: 2 }}>
+                {countdown}
+              </div>
+            </div>
+          </div>
+          <div style={{ color: 'white', fontSize: '1.2em', textAlign: 'center', marginBottom: '30px', textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}>
+            🎬 Your download is being prepared...<br/>
+            Please wait: <span>{countdown}</span> seconds
+          </div>
+          <div style={{ 
+            width: '40px', 
+            height: '40px', 
+            border: '4px solid rgba(255,255,255,0.3)', 
+            borderTop: '4px solid white', 
+            borderRadius: '50%', 
+            animation: 'spin 1s linear infinite' 
+          }}></div>
+        </div>
+      )}
 
-      <div className="max-w-4xl mx-auto p-4">
-        {/* Movie Info */}
-        <Card className="mb-8">
-          <CardContent className="p-6 text-center">
-            <h2 className="text-2xl font-bold mb-2">{movieLink.movieName}</h2>
-            <p className="text-muted-foreground">
-              Preparing your download link...
+      {/* Scroll Button */}
+      {showScrollButton && !showContinueButton && (
+        <div style={{ textAlign: 'center', padding: '30px 20px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', margin: '0' }}>
+          <button 
+            onClick={scrollToBottom}
+            style={{
+              background: 'linear-gradient(45deg, #28a745, #20c997)',
+              color: 'white',
+              border: 'none',
+              padding: '18px 35px',
+              fontSize: '1.2em',
+              fontWeight: 'bold',
+              borderRadius: '30px',
+              cursor: 'pointer',
+              boxShadow: '0 6px 20px rgba(40, 167, 69, 0.3)',
+              width: '80%',
+              maxWidth: '350px',
+              margin: '0 auto',
+              display: 'block',
+              transition: 'all 0.3s ease'
+            }}
+          >
+            <span style={{ fontSize: '1.1em', marginRight: '8px' }}>⬇️</span>
+            <span style={{ fontWeight: '600' }}>Scroll to Bottom</span>
+            <span style={{ fontSize: '1.1em', marginLeft: '8px' }}>⬇️</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <div style={{ minHeight: '100vh', background: '#f8f9fa' }}>
+        <header style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '40px 20px', textAlign: 'center' }}>
+          <h1 style={{ fontSize: '2.5em', marginBottom: '10px', textShadow: '0 2px 4px rgba(0,0,0,0.3)', margin: '0' }}>
+            🎬 Movie Zone — Your One-Stop Movie Destination
+          </h1>
+          <p style={{ fontSize: '1.2em', opacity: '0.9', margin: '10px 0 0 0' }}>Welcome to your favorite movie world</p>
+        </header>
+
+        <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
+          {/* Movie Info Section */}
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea', textAlign: 'center' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '2em', margin: '0 0 15px 0' }}>🎬 {movieLink.movieName}</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1.2em', margin: '0' }}>Your download link is being prepared. Please enjoy our content while you wait!</p>
+          </div>
+
+          {/* Content Sections */}
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Wide Range of Movie Categories</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Bollywood, Hollywood, South Indian, Web Series, Bengali, Animation, Comedy, Action, Romance, Horror, Thriller, Sci-Fi, K-Drama, and 18+ content.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Multi-Language Movie Support</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Bengali, Hindi, English, Tamil, Telugu, Gujarati — something for everyone!</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Premium Download Experience</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Descriptions, screenshots, cast information, and high-speed download links.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ No Sign-Up Required</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Open, browse, and download instantly.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Smart Movie Suggestions</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Intelligent recommendations based on your interests.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Reward Video System</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Unlock movies after a quick 15 second ad view.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Mobile-Optimized Interface</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Fast, clean experience even on slow internet.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Regular Movie Updates</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Fresh content added every week.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ 100% Safe & Secure</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>No fake buttons, malware, or redirections.</p>
+          </div>
+
+          {/* Telegram Section */}
+          <div style={{ background: 'linear-gradient(135deg, #0088cc, #0066aa)', color: 'white', borderLeft: '4px solid #0066aa', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <h2 style={{ color: 'white', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Join Our Telegram Channel</h2>
+            <p style={{ color: 'rgba(255,255,255,0.9)', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>
+              👉 <a href="https://t.me/moviezone969" target="_blank" style={{ color: '#fff', textDecoration: 'none', fontWeight: 'bold', background: 'rgba(255,255,255,0.2)', padding: '8px 16px', borderRadius: '20px', display: 'inline-block', marginTop: '10px' }}>t.me/moviezone969</a> — for instant updates.
             </p>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Timer Section */}
-        <div className="text-center mb-8">
-          {countdown > 0 ? (
-            <div className="space-y-4">
-              <div className="relative w-32 h-32 mx-auto">
-                {/* Circular Progress */}
-                <svg className="w-32 h-32 transform -rotate-90" viewBox="0 0 128 128">
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    className="text-muted"
-                  />
-                  <circle
-                    cx="64"
-                    cy="64"
-                    r="56"
-                    stroke="currentColor"
-                    strokeWidth="8"
-                    fill="none"
-                    strokeDasharray={`${2 * Math.PI * 56}`}
-                    strokeDashoffset={`${2 * Math.PI * 56 * (countdown / 10)}`}
-                    className="text-primary transition-all duration-1000 ease-linear"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                
-                {/* Timer Number */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-4xl font-bold text-primary">{countdown}</span>
-                </div>
-              </div>
-              
-              <p className="text-lg text-muted-foreground">
-                Please wait while we prepare your link...
+          {/* Continue Button Section */}
+          {showContinueButton && (
+            <div id="downloadSection" style={{ background: 'linear-gradient(135deg, #28a745, #20c997)', color: 'white', textAlign: 'center', padding: '40px', margin: '30px 0', borderRadius: '12px', boxShadow: '0 8px 30px rgba(40, 167, 69, 0.3)' }}>
+              <div style={{ fontSize: '4em', marginBottom: '20px', textAlign: 'center' }}>🎬</div>
+              <p style={{ color: 'black', fontSize: '1.3em', fontWeight: 'bold', marginBottom: '25px', opacity: '1', display: 'block', textAlign: 'center', textShadow: '0 2px 4px rgba(0,0,0,0.3)', margin: '0 0 25px 0' }}>
+                <span style={{ fontSize: '1.3em', marginRight: '8px' }}>👇</span>
+                Click here to get your movie
+                <span style={{ fontSize: '1.3em', marginLeft: '8px' }}>👇</span>
               </p>
+              <button 
+                onClick={handleContinue}
+                disabled={continueButtonDelay > 0}
+                style={{
+                  background: continueButtonDelay > 0 ? '#6c757d' : 'linear-gradient(45deg, #007bff, #0056b3)',
+                  color: 'white',
+                  border: 'none',
+                  padding: '15px 30px',
+                  fontSize: '1.2em',
+                  fontWeight: 'bold',
+                  borderRadius: '30px',
+                  cursor: continueButtonDelay > 0 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                }}
+              >
+                {continueButtonDelay > 0 ? `Please wait... (${continueButtonDelay}s)` : 'Continue to Bot'}
+              </button>
             </div>
-          ) : showScrollMessage ? (
-            <div className="space-y-4">
-              <div className="text-xl font-semibold text-primary">
-                ↓ Scroll to Bottom ↓
-              </div>
-              <p className="text-muted-foreground">
-                Scroll down to access your download link
-              </p>
-            </div>
-          ) : null}
+          )}
         </div>
 
-        {/* Large spacing area when countdown is done */}
-        {showScrollMessage && (
-          <>
-            {/* This creates the 60-70cm space you requested */}
-            <div style={{ height: "60vh" }} className="flex items-center justify-center">
-              <div className="text-center space-y-4 text-muted-foreground">
-                <div className="text-lg">Advertisement Space</div>
-                <div className="text-sm">
-                  This area can be used for ads or other content
-                </div>
-              </div>
-            </div>
-
-            {/* Continue Button at the bottom */}
-            <div className="text-center pb-8">
-              <Card>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-bold mb-4">Ready to Download</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Click the button below to access your movie download link for {movieLink.movieName}
-                  </p>
-                  <Button 
-                    size="lg" 
-                    onClick={handleContinue}
-                    className="px-8 py-3"
-                  >
-                    Continue to Download
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </>
-        )}
+        <footer style={{ background: '#343a40', color: 'white', textAlign: 'center', padding: '30px 20px', marginTop: '50px' }}>
+          <p style={{ margin: '0' }}>© 2025 Movie Zone | Enjoy your favorite movies</p>
+        </footer>
       </div>
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        
+        @media (max-width: 768px) {
+          .header h1 {
+            font-size: 1.8em !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
