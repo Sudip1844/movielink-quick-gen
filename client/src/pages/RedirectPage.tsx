@@ -107,12 +107,19 @@ const RedirectPage = () => {
   }
 
   return (
-    <div style={{ 
-      minHeight: '100vh', 
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
-      overflowX: 'hidden'
-    }}>
+    <>
+      <style>{`
+        @keyframes rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+      <div style={{ 
+        minHeight: '100vh', 
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        fontFamily: 'Segoe UI, Tahoma, Geneva, Verdana, sans-serif',
+        overflowX: 'hidden'
+      }}>
       
       {/* Timer Section (Always visible at top when countdown > 0) */}
       {countdown > 0 && (
@@ -126,45 +133,58 @@ const RedirectPage = () => {
           padding: '30px 20px',
           boxShadow: '0 4px 20px rgba(0,0,0,0.2)'
         }}>
-          {/* Movie name above timer */}
+          {/* Movie name label */}
+          <div style={{ 
+            color: 'white', 
+            fontSize: '1.1em', 
+            marginBottom: '10px', 
+            textAlign: 'center',
+            textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            fontWeight: '500'
+          }}>
+            Movie name
+          </div>
+          
+          {/* Movie name */}
           <h2 style={{ 
             color: 'white', 
             fontSize: '1.3em', 
-            marginBottom: '20px', 
+            marginBottom: '30px', 
             textAlign: 'center',
             textShadow: '0 2px 4px rgba(0,0,0,0.3)',
-            margin: '0 0 20px 0'
+            margin: '0 0 30px 0'
           }}>
             🎬 {movieLink.movieName}
           </h2>
           
           <div style={{
-            width: '120px',
-            height: '120px',
+            width: '150px',
+            height: '150px',
             borderRadius: '50%',
-            background: 'linear-gradient(45deg, #28a745, #20c997)',
+            background: 'conic-gradient(from 0deg, #4facfe 0%, #00f2fe 25%, #43e97b 50%, #38f9d7 75%, #4facfe 100%)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
-            marginBottom: '20px',
-            boxShadow: '0 8px 30px rgba(0,0,0,0.3)'
+            marginBottom: '30px',
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+            animation: 'rotate 3s linear infinite'
           }}>
             <div style={{
-              width: '120px',
-              height: '120px',
+              width: '130px',
+              height: '130px',
               borderRadius: '50%',
               background: 'white',
-              position: 'absolute',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.1)'
             }}>
               <div style={{
-                fontSize: '2.5em',
+                fontSize: '2.8em',
                 fontWeight: 'bold',
-                color: '#667eea',
-                zIndex: 2
+                color: '#333',
+                textShadow: '0 2px 4px rgba(0,0,0,0.1)'
               }}>
                 {countdown}
               </div>
@@ -173,23 +193,13 @@ const RedirectPage = () => {
           
           <div style={{
             color: 'white',
-            fontSize: '1em',
+            fontSize: '1.1em',
             textAlign: 'center',
-            marginBottom: '30px',
-            textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+            textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            fontWeight: '500'
           }}>
-            🎬 Your download is being prepared...<br />
-            Please wait: {countdown} seconds
+            🎬 Your download is being prepared...
           </div>
-          
-          <div style={{
-            width: '40px',
-            height: '40px',
-            border: '4px solid rgba(255,255,255,0.3)',
-            borderTop: '4px solid white',
-            borderRadius: '50%',
-            animation: 'spin 1s linear infinite'
-          }}></div>
         </div>
       )}
 
@@ -341,6 +351,7 @@ const RedirectPage = () => {
         }
       `}</style>
     </div>
+    </>
   );
 };
 
