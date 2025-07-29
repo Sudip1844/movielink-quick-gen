@@ -14,6 +14,16 @@ A movie link shortening service that allows admins to create short links for mov
   - Redesigned redirect page with beautiful MovieZone branding
   - Added persistent PostgreSQL database storage (DatabaseStorage)
   - Enhanced redirect page with additional movie-related content sections
+  - **Redirect Page Optimization (2025-01-29)**: Major improvements to match design specifications
+    - Changed timer from 15 seconds to single 10-second countdown
+    - Movie name now displays above timer during countdown, hidden after completion
+    - Continue section only appears after timer completion (no premature visibility)
+    - Removed duplicate timer displays and unnecessary delay counters
+    - Fixed random view count increases by implementing proper view tracking
+    - Reduced font sizes across all content sections for better readability
+    - Removed "Go to Home" option for expired/missing links - users stay on redirect page
+    - Manual scroll to continue button instead of automatic scrolling
+    - Changed continue button text from "Continue to Bot" to simply "Continue"
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management
