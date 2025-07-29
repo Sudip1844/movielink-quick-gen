@@ -1,58 +1,52 @@
 import { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useRoute, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-
-interface MovieLink {
-  id: string;
-  movieName: string;
-  originalLink: string;
-  shortId: string;
-  views: number;
-  dateAdded: string;
-  adsEnabled: boolean;
-}
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 const RedirectPage = () => {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const [match, params] = useRoute("/m/:id");
+  const [, setLocation] = useLocation();
   const [countdown, setCountdown] = useState(10);
   const [showScrollMessage, setShowScrollMessage] = useState(false);
-  const [movieLink, setMovieLink] = useState<MovieLink | null>(null);
+
+  const id = params?.id;
+
+  // Fetch movie link from API
+  const { data: movieLink, isLoading } = useQuery({
+    queryKey: ["/api/movie-links/", id],
+    enabled: !!id,
+  }) as { data: any, isLoading: boolean };
+
+  // Update views mutation
+  const updateViewsMutation = useMutation({
+    mutationFn: async (shortId: string) => {
+      return apiRequest(`/api/movie-links/${shortId}/views`, {
+        method: "PATCH",
+      });
+    },
+  });
 
   useEffect(() => {
-    // Load the specific link from localStorage
-    const savedLinks = localStorage.getItem("moviezone_links");
-    if (savedLinks) {
-      const links: MovieLink[] = JSON.parse(savedLinks);
-      const foundLink = links.find(link => link.shortId === id);
-      
-      if (foundLink) {
-        setMovieLink(foundLink);
-        
-        // Update view count
-        const updatedLinks = links.map(link => 
-          link.shortId === id 
-            ? { ...link, views: link.views + 1 }
-            : link
-        );
-        localStorage.setItem("moviezone_links", JSON.stringify(updatedLinks));
-
-        // If ads are disabled, redirect immediately
-        if (!foundLink.adsEnabled) {
-          window.location.href = foundLink.originalLink;
-          return;
-        }
-      } else {
-        // Link not found, redirect to home
-        navigate("/");
-        return;
-      }
-    } else {
-      navigate("/");
+    if (!id) {
+      setLocation("/");
       return;
     }
-  }, [id, navigate]);
+  }, [id, setLocation]);
+
+  useEffect(() => {
+    if (movieLink && !updateViewsMutation.isSuccess) {
+      // Update view count once when component loads
+      updateViewsMutation.mutate(movieLink.shortId);
+
+      // If ads are disabled, redirect immediately
+      if (!movieLink.adsEnabled) {
+        window.location.href = movieLink.originalLink;
+        return;
+      }
+    }
+  }, [movieLink, updateViewsMutation]);
 
   useEffect(() => {
     if (!movieLink?.adsEnabled) return;
@@ -71,6 +65,21 @@ const RedirectPage = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <h1 className="text-2xl font-bold mb-4">Loading...</h1>
+            <p className="text-muted-foreground">
+              Fetching your link...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (!movieLink) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -80,7 +89,7 @@ const RedirectPage = () => {
             <p className="text-muted-foreground mb-4">
               The requested link could not be found.
             </p>
-            <Button onClick={() => navigate("/")}>
+            <Button onClick={() => setLocation("/")}>
               Go to Home
             </Button>
           </CardContent>

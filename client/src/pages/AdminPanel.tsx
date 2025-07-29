@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,24 +16,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-
-interface MovieLink {
-  id: string;
-  movieName: string;
-  originalLink: string;
-  shortId: string;
-  views: number;
-  dateAdded: string;
-  adsEnabled: boolean;
-}
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { MovieLink, InsertMovieLink } from "@shared/schema";
 
 const AdminPanel = () => {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [movieName, setMovieName] = useState("");
   const [originalLink, setOriginalLink] = useState("");
   const [adsEnabled, setAdsEnabled] = useState(true);
   const [generatedLink, setGeneratedLink] = useState("");
-  const [movieLinks, setMovieLinks] = useState<MovieLink[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "date">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -42,22 +34,46 @@ const AdminPanel = () => {
     // Check if user is logged in
     const isLoggedIn = localStorage.getItem("moviezone_admin_logged_in");
     if (!isLoggedIn) {
-      navigate("/");
+      setLocation("/");
       return;
     }
+  }, [setLocation]);
 
-    // Load existing links from localStorage
-    const savedLinks = localStorage.getItem("moviezone_links");
-    if (savedLinks) {
-      setMovieLinks(JSON.parse(savedLinks));
-    }
-  }, [navigate]);
+  // Fetch movie links from API
+  const { data: movieLinks = [], isLoading } = useQuery({
+    queryKey: ["/api/movie-links"],
+  });
+
+  // Create movie link mutation
+  const createMovieLinkMutation = useMutation({
+    mutationFn: async (data: InsertMovieLink) => {
+      return apiRequest("/api/movie-links", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movie-links"] });
+    },
+  });
+
+  // Delete movie link mutation
+  const deleteMovieLinkMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/movie-links/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movie-links"] });
+    },
+  });
 
   const generateShortId = () => {
     return Math.random().toString(36).substring(2, 8);
   };
 
-  const handleGenerateLink = () => {
+  const handleGenerateLink = async () => {
     if (!movieName.trim() || !originalLink.trim()) {
       toast({
         title: "Error",
@@ -70,29 +86,30 @@ const AdminPanel = () => {
     const shortId = generateShortId();
     const shortLink = `${window.location.origin}/m/${shortId}`;
     
-    const newLink: MovieLink = {
-      id: shortId,
-      movieName: movieName.trim(),
-      originalLink: originalLink.trim(),
-      shortId,
-      views: 0,
-      dateAdded: new Date().toISOString(),
-      adsEnabled,
-    };
+    try {
+      await createMovieLinkMutation.mutateAsync({
+        movieName: movieName.trim(),
+        originalLink: originalLink.trim(),
+        shortId,
+        adsEnabled,
+      });
+      
+      setGeneratedLink(shortLink);
+      toast({
+        title: "Link Generated",
+        description: "Short link created successfully!",
+      });
 
-    const updatedLinks = [...movieLinks, newLink];
-    setMovieLinks(updatedLinks);
-    localStorage.setItem("moviezone_links", JSON.stringify(updatedLinks));
-    
-    setGeneratedLink(shortLink);
-    toast({
-      title: "Link Generated",
-      description: "Short link created successfully!",
-    });
-
-    // Clear form
-    setMovieName("");
-    setOriginalLink("");
+      // Clear form
+      setMovieName("");
+      setOriginalLink("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create movie link",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCopyLink = () => {
@@ -103,26 +120,32 @@ const AdminPanel = () => {
     });
   };
 
-  const handleDeleteLink = (id: string) => {
-    const updatedLinks = movieLinks.filter(link => link.id !== id);
-    setMovieLinks(updatedLinks);
-    localStorage.setItem("moviezone_links", JSON.stringify(updatedLinks));
-    toast({
-      title: "Deleted",
-      description: "Link deleted successfully!",
-    });
+  const handleDeleteLink = async (id: number) => {
+    try {
+      await deleteMovieLinkMutation.mutateAsync(id);
+      toast({
+        title: "Deleted",
+        description: "Link deleted successfully!",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete movie link",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleLogout = () => {
     localStorage.removeItem("moviezone_admin_logged_in");
-    navigate("/");
+    setLocation("/");
     toast({
       title: "Logged Out",
       description: "Successfully logged out",
     });
   };
 
-  const filteredLinks = movieLinks
+  const filteredLinks = (movieLinks as MovieLink[])
     .filter(link => 
       link.movieName.toLowerCase().includes(searchTerm.toLowerCase())
     )
@@ -136,7 +159,7 @@ const AdminPanel = () => {
       }
     });
 
-  const totalViews = movieLinks.reduce((sum, link) => sum + link.views, 0);
+  const totalViews = (movieLinks as MovieLink[]).reduce((sum, link) => sum + link.views, 0);
   const todayViews = 0; // Would need to implement proper tracking for this
 
   return (
@@ -169,7 +192,7 @@ const AdminPanel = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card>
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{movieLinks.length}</div>
+                  <div className="text-2xl font-bold text-primary">{(movieLinks as MovieLink[]).length}</div>
                   <div className="text-sm text-muted-foreground">Total Links</div>
                 </CardContent>
               </Card>
@@ -187,7 +210,7 @@ const AdminPanel = () => {
               </Card>
               <Card>
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{movieLinks.slice(-5).length}</div>
+                  <div className="text-2xl font-bold text-primary">{(movieLinks as MovieLink[]).slice(-5).length}</div>
                   <div className="text-sm text-muted-foreground">Recent Links</div>
                 </CardContent>
               </Card>

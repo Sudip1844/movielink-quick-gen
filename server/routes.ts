@@ -1,0 +1,80 @@
+import type { Express } from "express";
+import { createServer, type Server } from "http";
+import { storage } from "./storage";
+import { insertMovieLinkSchema } from "@shared/schema";
+import { z } from "zod";
+
+export async function registerRoutes(app: Express): Promise<Server> {
+  // Movie Links API routes
+  
+  // Get all movie links
+  app.get("/api/movie-links", async (req, res) => {
+    try {
+      const links = await storage.getMovieLinks();
+      res.json(links);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch movie links" });
+    }
+  });
+
+  // Create a new movie link
+  app.post("/api/movie-links", async (req, res) => {
+    try {
+      const result = insertMovieLinkSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid data", details: result.error });
+      }
+      
+      const movieLink = await storage.createMovieLink(result.data);
+      res.status(201).json(movieLink);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create movie link" });
+    }
+  });
+
+  // Get movie link by short ID
+  app.get("/api/movie-links/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      const link = await storage.getMovieLinkByShortId(shortId);
+      
+      if (!link) {
+        return res.status(404).json({ error: "Movie link not found" });
+      }
+      
+      res.json(link);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch movie link" });
+    }
+  });
+
+  // Update movie link views
+  app.patch("/api/movie-links/:shortId/views", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      await storage.updateMovieLinkViews(shortId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update views" });
+    }
+  });
+
+  // Delete a movie link
+  app.delete("/api/movie-links/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      await storage.deleteMovieLink(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete movie link" });
+    }
+  });
+
+  const httpServer = createServer(app);
+
+  return httpServer;
+}
