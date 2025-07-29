@@ -109,10 +109,7 @@ const RedirectPage = () => {
   return (
     <>
       <style>{`
-        @keyframes rotate {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
+        /* Smooth transitions for timer circle */
       `}</style>
       <div style={{ 
         minHeight: '100vh', 
@@ -161,24 +158,62 @@ const RedirectPage = () => {
             width: '150px',
             height: '150px',
             borderRadius: '50%',
-            background: 'conic-gradient(from 0deg, #4facfe 0%, #00f2fe 25%, #43e97b 50%, #38f9d7 75%, #4facfe 100%)',
+            background: '#e0e0e0',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
             marginBottom: '30px',
-            boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
-            animation: 'rotate 3s linear infinite'
+            boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
           }}>
+            {/* Progress Circle */}
+            <svg 
+              width="150" 
+              height="150" 
+              style={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0,
+                transform: 'rotate(-90deg)' 
+              }}
+            >
+              <defs>
+                <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#4facfe" />
+                  <stop offset="25%" stopColor="#00f2fe" />
+                  <stop offset="50%" stopColor="#43e97b" />
+                  <stop offset="75%" stopColor="#38f9d7" />
+                  <stop offset="100%" stopColor="#4facfe" />
+                </linearGradient>
+              </defs>
+              <circle
+                cx="75"
+                cy="75"
+                r="65"
+                fill="none"
+                stroke="url(#progressGradient)"
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 65}`}
+                strokeDashoffset={`${2 * Math.PI * 65 * (1 - countdown / 10)}`}
+                style={{
+                  transition: 'stroke-dashoffset 1s ease-in-out'
+                }}
+              />
+            </svg>
+            
+            {/* Inner white circle with countdown number */}
             <div style={{
-              width: '130px',
-              height: '130px',
+              width: '110px',
+              height: '110px',
               borderRadius: '50%',
               background: 'white',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.1)'
+              boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.1)',
+              position: 'relative',
+              zIndex: 2
             }}>
               <div style={{
                 fontSize: '2.8em',
