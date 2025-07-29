@@ -24,6 +24,11 @@ A movie link shortening service that allows admins to create short links for mov
     - Removed "Go to Home" option for expired/missing links - users stay on redirect page
     - Manual scroll to continue button instead of automatic scrolling
     - Changed continue button text from "Continue to Bot" to simply "Continue"
+  - **Admin Panel Enhancements (2025-01-29)**: Improved admin interface and functionality
+    - Reorganized stats display in 2x2 grid: Total Links | Today's Links | Total Views | Today's Views
+    - Added Recent Links section below link generator showing last 10 created links with copy buttons
+    - Fixed generated link clearing after copying to prevent permanent display
+    - Generated links now move to recent links section after copying
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management

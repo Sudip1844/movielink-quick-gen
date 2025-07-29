@@ -118,6 +118,8 @@ const AdminPanel = () => {
       title: "Copied",
       description: "Link copied to clipboard!",
     });
+    // Clear the generated link after copying
+    setGeneratedLink("");
   };
 
   const handleDeleteLink = async (id: number) => {
@@ -161,6 +163,13 @@ const AdminPanel = () => {
 
   const totalViews = (movieLinks as MovieLink[]).reduce((sum, link) => sum + link.views, 0);
   const todayViews = 0; // Would need to implement proper tracking for this
+  const todayLinks = 0; // Would need to implement proper tracking for this
+  
+  // Get the most recent 10 links for the recent links section
+  const recentLinks = (movieLinks as MovieLink[])
+    .slice()
+    .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
+    .slice(0, 10);
 
   return (
     <div className="min-h-screen bg-background">
@@ -188,12 +197,18 @@ const AdminPanel = () => {
           </TabsList>
 
           <TabsContent value="home" className="space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Stats Cards - 2x2 Grid */}
+            <div className="grid grid-cols-2 gap-4">
               <Card>
                 <CardContent className="p-4 text-center">
                   <div className="text-2xl font-bold text-primary">{(movieLinks as MovieLink[]).length}</div>
                   <div className="text-sm text-muted-foreground">Total Links</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 text-center">
+                  <div className="text-2xl font-bold text-primary">{todayLinks}</div>
+                  <div className="text-sm text-muted-foreground">Today's Links</div>
                 </CardContent>
               </Card>
               <Card>
@@ -206,12 +221,6 @@ const AdminPanel = () => {
                 <CardContent className="p-4 text-center">
                   <div className="text-2xl font-bold text-primary">{todayViews}</div>
                   <div className="text-sm text-muted-foreground">Today's Views</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{(movieLinks as MovieLink[]).slice(-5).length}</div>
-                  <div className="text-sm text-muted-foreground">Recent Links</div>
                 </CardContent>
               </Card>
             </div>
@@ -261,6 +270,45 @@ const AdminPanel = () => {
                         <Copy className="w-4 h-4" />
                       </Button>
                     </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Recent Links Section */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Recent Links</h3>
+                {recentLinks.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No links created yet</p>
+                ) : (
+                  <div className="space-y-3">
+                    {recentLinks.map((link) => (
+                      <div key={link.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{link.movieName}</p>
+                          <p className="text-sm text-muted-foreground truncate">
+                            {window.location.origin}/m/{link.shortId}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2 ml-2">
+                          <span className="text-sm text-muted-foreground">{link.views} views</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`${window.location.origin}/m/${link.shortId}`);
+                              toast({
+                                title: "Copied",
+                                description: "Link copied to clipboard!",
+                              });
+                            }}
+                          >
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>
