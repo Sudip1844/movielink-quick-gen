@@ -225,6 +225,27 @@ const RedirectPage = () => {
             <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1.2em', margin: '0' }}>Your download link is being prepared. Please enjoy our content while you wait!</p>
           </div>
 
+          {/* Additional Content Sections */}
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ HD Quality Downloads</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Enjoy crystal-clear HD quality downloads with multiple resolution options including 720p, 1080p, and 4K for the ultimate viewing experience.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Fast & Secure Downloads</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Our high-speed servers ensure lightning-fast downloads with 256-bit SSL encryption for complete security and privacy protection.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Resume Download Support</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>Interrupted downloads? No problem! Our download manager supports resume functionality so you never lose progress.</p>
+          </div>
+
+          <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
+            <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Subtitle Support</h2>
+            <p style={{ color: '#666', lineHeight: '1.6', fontSize: '1em', margin: '0' }}>All movies come with multiple subtitle options in various languages including English, Hindi, Bengali, and more.</p>
+          </div>
+
           {/* Content Sections */}
           <div style={{ background: 'white', marginBottom: '20px', padding: '25px', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)', borderLeft: '4px solid #667eea' }}>
             <h2 style={{ color: '#333', marginBottom: '15px', fontSize: '1.3em', margin: '0 0 15px 0' }}>✅ Wide Range of Movie Categories</h2>

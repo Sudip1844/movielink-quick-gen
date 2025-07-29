@@ -10,6 +10,10 @@ A movie link shortening service that allows admins to create short links for mov
   - Moved client-side localStorage logic to server-side API endpoints
   - Implemented proper client/server separation for security
   - Updated all components to use @tanstack/react-query for API calls
+  - Fixed toast notifications to display for only 1 second
+  - Redesigned redirect page with beautiful MovieZone branding
+  - Added persistent PostgreSQL database storage (DatabaseStorage)
+  - Enhanced redirect page with additional movie-related content sections
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management
