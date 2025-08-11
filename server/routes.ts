@@ -5,6 +5,14 @@ import { insertMovieLinkSchema, createShortLinkSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
 
+// Load environment configuration
+let envConfig;
+try {
+  envConfig = require('../env-config.js');
+} catch (error) {
+  envConfig = {};
+}
+
 // Authentication middleware for secure API endpoints
 async function authenticateToken(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
