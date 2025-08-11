@@ -38,7 +38,7 @@ function generateShortId(): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // Secure API endpoint for creating short links (for bots)
+  // Universal API endpoint for creating short links (for any external service)
   app.post("/api/create-short-link", authenticateToken, async (req, res) => {
     try {
       const result = createShortLinkSchema.safeParse(req.body);
@@ -49,7 +49,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      const { movieName, originalLink, adsEnabled } = result.data;
+      const { movieName, originalLink } = result.data;
       
       // Generate unique short ID
       let shortId: string;
@@ -62,11 +62,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       } while (await storage.getMovieLinkByShortId(shortId));
       
+      // API created links always have ads enabled (cannot be disabled)
       const movieLink = await storage.createMovieLink({
         movieName,
         originalLink,
         shortId,
-        adsEnabled: adsEnabled ?? true,
+        adsEnabled: true, // Always true for API created links
       });
       
       const shortUrl = `${req.protocol}://${req.get('host')}/m/${shortId}`;

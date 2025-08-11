@@ -1,10 +1,17 @@
-# MovieZone API Documentation
+# MovieZone Universal API Documentation
 
-## Secure API Endpoint for Bot Integration
+## Universal API Endpoint for All Platforms
 
 ### POST `/api/create-short-link` (Token Required)
 
-এই API endpoint ব্যবহার করে আপনার বট secure token দিয়ে মুভি টাইটেল এবং অরিজিনাল লিংক পাঠিয়ে শর্ট লিংক তৈরি করতে পারবে।
+এই Universal API endpoint যেকোনো platform থেকে ব্যবহার করা যাবে:
+- **Telegram Bots** 
+- **Discord Bots**
+- **Web Applications**
+- **Mobile Apps**
+- **Any External Service**
+
+Movie title এবং original link পাঠিয়ে secure short link তৈরি করতে পারবেন।
 
 #### Authentication
 
@@ -23,15 +30,15 @@
 ```json
 {
   "movieName": "Movie Title",
-  "originalLink": "https://example.com/movie-download-link",
-  "adsEnabled": true
+  "originalLink": "https://example.com/movie-download-link"
 }
 ```
 
 **Parameters:**
 - `movieName` (required): মুভির নাম (string)
 - `originalLink` (required): মুভির অরিজিনাল ডাউনলোড লিংক (string)
-- `adsEnabled` (optional): বিজ্ঞাপন চালু রাখবেন কি না (boolean, default: true)
+
+**Important Note:** API দিয়ে তৈরি সব short links এ ads **সবসময় enabled** থাকবে। Ads disable করার option নেই।
 
 #### Response
 
@@ -70,8 +77,7 @@ curl -X POST http://localhost:5000/api/create-short-link \
   -H "Authorization: Bearer YOUR_API_TOKEN" \
   -d '{
     "movieName": "Avengers Endgame",
-    "originalLink": "https://example.com/avengers-endgame-download",
-    "adsEnabled": true
+    "originalLink": "https://example.com/avengers-endgame-download"
   }'
 ```
 
@@ -85,8 +91,7 @@ const response = await fetch('/api/create-short-link', {
   },
   body: JSON.stringify({
     movieName: 'Avengers Endgame',
-    originalLink: 'https://example.com/avengers-endgame-download',
-    adsEnabled: true
+    originalLink: 'https://example.com/avengers-endgame-download'
   })
 });
 
@@ -106,14 +111,26 @@ headers = {
 }
 payload = {
     "movieName": "Avengers Endgame",
-    "originalLink": "https://example.com/avengers-endgame-download",
-    "adsEnabled": True
+    "originalLink": "https://example.com/avengers-endgame-download"
 }
 
 response = requests.post(url, headers=headers, json=payload)
 data = response.json()
 print(f"Short URL: {data['shortUrl']}")
 ```
+
+## Universal Integration বৈশিষ্ট্য
+
+### সব Platform থেকে তৈরি Links একসাথে ব্যবস্থাপনা:
+- **API থেকে তৈরি links** (Telegram Bot, Discord Bot, etc.)
+- **Admin Panel থেকে তৈরি links**
+- **সব links একই database table এ দেখাবে**
+- **সব links admin panel থেকে edit করা যাবে**
+- **Views count, movie name সবকিছু track হবে**
+
+### API vs Admin Panel Links পার্থক্য:
+- **API Links:** Ads সবসময় enabled (বন্ধ করা যাবে না)
+- **Admin Panel Links:** Ads on/off করার option আছে
 
 ## API Token ব্যবস্থাপনা
 
@@ -122,7 +139,7 @@ print(f"Short URL: {data['shortUrl']}")
 1. **Admin Panel** থেকে login করুন
 2. **API Tokens** ট্যাবে যান  
 3. **Generate New Token** বাটনে ক্লিক করুন
-4. Token এর নাম দিন (যেমন: "My Bot Token")
+4. Token এর নাম দিন (যেমন: "Telegram Bot Token")
 5. নতুন token copy করে নিন এবং নিরাপদ রাখুন
 
 ### Security নোট:
@@ -163,19 +180,80 @@ print(f"Short URL: {data['shortUrl']}")
 }
 ```
 
-## Other Available API Endpoints
+## Platform Integration Examples
 
-### GET `/api/movie-links`
-সব মুভি লিংকের তালিকা পেতে
+### Telegram Bot Integration:
+```python
+import requests
 
-### GET `/api/movie-links/:shortId`  
-নির্দিষ্ট শর্ট ID দিয়ে মুভি লিংক খুঁজে পেতে
+API_URL = "http://yourhost:5000/api/create-short-link"
+API_TOKEN = "your_api_token_here"
 
-### PATCH `/api/movie-links/:id`
-মুভি লিংকের অরিজিনাল URL আপডেট করতে
+def create_movie_short_link(movie_name, download_url):
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {API_TOKEN}"
+    }
+    payload = {
+        "movieName": movie_name,
+        "originalLink": download_url
+    }
+    
+    response = requests.post(API_URL, headers=headers, json=payload)
+    data = response.json()
+    
+    if data.get("success"):
+        return data["shortUrl"]
+    else:
+        return None
 
-### DELETE `/api/movie-links/:id`
-মুভি লিংক ডিলিট করতে
+# Usage in Telegram bot
+short_link = create_movie_short_link("Avengers Endgame", "https://example.com/download")
+# Send short_link in Telegram message
+```
 
-### PATCH `/api/movie-links/:shortId/views`
-ভিউ কাউন্ট বাড়াতে
+### Discord Bot Integration:
+```javascript
+const axios = require('axios');
+
+const API_URL = 'http://yourhost:5000/api/create-short-link';
+const API_TOKEN = 'your_api_token_here';
+
+async function createMovieShortLink(movieName, originalLink) {
+    try {
+        const response = await axios.post(API_URL, {
+            movieName,
+            originalLink
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${API_TOKEN}`
+            }
+        });
+        
+        return response.data.shortUrl;
+    } catch (error) {
+        console.error('Error creating short link:', error);
+        return null;
+    }
+}
+
+// Usage in Discord bot
+const shortLink = await createMovieShortLink('Spider-Man', 'https://example.com/spiderman');
+// Send shortLink in Discord message
+```
+
+## Admin Panel Management
+
+### সব Links একসাথে দেখা:
+- API থেকে তৈরি links
+- Admin panel থেকে তৈরি links  
+- Views count এবং সব তথ্য
+- Original links edit করার সুবিধা
+
+### Database Table Features:
+- **Movie Name**: মুভির নাম
+- **Original Link**: প্রকৃত ডাউনলোড লিংক (edit করা যায়)
+- **Short Link**: শর্ট URL (copy button সহ)  
+- **Views**: ক্লিক কাউন্ট
+- **Actions**: Edit এবং Delete বাটন

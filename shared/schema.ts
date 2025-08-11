@@ -33,11 +33,11 @@ export const insertApiTokenSchema = createInsertSchema(apiTokens).omit({
   lastUsed: true,
 });
 
-// API request schema for creating short links
+// API request schema for creating short links (universal)
 export const createShortLinkSchema = z.object({
   movieName: z.string().min(1, "Movie name is required"),
   originalLink: z.string().url("Valid URL is required"),
-  adsEnabled: z.boolean().optional().default(true),
+  // Note: adsEnabled is not included for API requests - always true
 });
 
 export type InsertMovieLink = z.infer<typeof insertMovieLinkSchema>;
