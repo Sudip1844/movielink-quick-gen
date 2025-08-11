@@ -15,17 +15,18 @@ function loadEnvConfig() {
 
 const envConfig = loadEnvConfig();
 
-// Supabase connection string
-const connectionString = process.env.DATABASE_URL || envConfig.DATABASE_URL || "postgresql://postgres:Sudipb184495@db.cfbgcvbrjwtvzxxtfmhh.supabase.co:5432/postgres";
+// Replit PostgreSQL connection string
+const connectionString = process.env.DATABASE_URL || envConfig.DATABASE_URL;
 
 if (!connectionString) {
   throw new Error(
-    "DATABASE_URL must be set. Check env-config.js or environment variables.",
+    "DATABASE_URL must be set. Check environment variables.",
   );
 }
 
+// For Replit database, we don't need SSL in development
 const client = postgres(connectionString, { 
-  ssl: 'require',
+  ssl: process.env.NODE_ENV === 'production' ? 'require' : false,
   max: 1 
 });
 export const db = drizzle(client, { schema });
