@@ -216,14 +216,30 @@ const AdminPanel = () => {
     });
 
   const totalViews = (movieLinks as MovieLink[]).reduce((sum, link) => sum + link.views, 0);
-  const todayViews = 0; // Would need to implement proper tracking for this
-  const todayLinks = 0; // Would need to implement proper tracking for this
   
-  // Get the most recent 10 links for the recent links section
+  // Calculate today's stats
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const todayLinks = (movieLinks as MovieLink[]).filter(link => {
+    const linkDate = new Date(link.dateAdded);
+    linkDate.setHours(0, 0, 0, 0);
+    return linkDate.getTime() === today.getTime();
+  }).length;
+  
+  const todayViews = (movieLinks as MovieLink[])
+    .filter(link => {
+      const linkDate = new Date(link.dateAdded);
+      linkDate.setHours(0, 0, 0, 0);
+      return linkDate.getTime() === today.getTime();
+    })
+    .reduce((sum, link) => sum + link.views, 0);
+  
+  // Get the most recent 5 links for the recent links section
   const recentLinks = (movieLinks as MovieLink[])
     .slice()
     .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
-    .slice(0, 10);
+    .slice(0, 5);
 
   return (
     <div className="min-h-screen bg-background">

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,19 +6,49 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 
-// Hardcoded credentials - can be changed here
-const ADMIN_CREDENTIALS = {
-  id: "sbiswas1844",
-  password: "save@184455"
+// Admin credentials will be fetched from environment variables
+let ADMIN_CREDENTIALS = {
+  id: "",
+  password: ""
 };
 
 const Login = () => {
   const [formData, setFormData] = useState({ id: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
+  const [credentialsLoaded, setCredentialsLoaded] = useState(false);
   const [, setLocation] = useLocation();
+
+  // Fetch admin credentials from backend on component mount
+  useEffect(() => {
+    const fetchCredentials = async () => {
+      try {
+        const response = await fetch('/api/admin-config');
+        if (response.ok) {
+          const config = await response.json();
+          ADMIN_CREDENTIALS.id = config.adminId;
+          ADMIN_CREDENTIALS.password = config.adminPassword;
+          setCredentialsLoaded(true);
+        }
+      } catch (error) {
+        console.error('Failed to load admin credentials:', error);
+        setCredentialsLoaded(true); // Still allow component to render
+      }
+    };
+    
+    fetchCredentials();
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!credentialsLoaded) {
+      toast({
+        title: "Please wait",
+        description: "Loading admin configuration...",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     // Simulate slight delay for better UX

@@ -37,6 +37,12 @@ A movie link shortening service that allows admins to create short links for mov
     - Implemented secure token authentication with Bearer token system
     - Enhanced database table display with Views column and copy buttons for short links
     - Updated API documentation for universal platform integration
+  - **Security & Performance Improvements (2025-08-11)**: Enhanced admin panel security and user experience
+    - Moved admin login credentials from hardcoded values to environment variables (env-config.js)
+    - Fixed recent links section to display only last 5 created links instead of 10
+    - Removed duplicate API endpoint for better code maintenance
+    - Implemented proper today's statistics calculation for links and views
+    - Added admin configuration API endpoint for secure credential management
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management
