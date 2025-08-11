@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { MovieLink, InsertMovieLink } from "@shared/schema";
+import type { MovieLink, InsertMovieLink, ApiToken, InsertApiToken } from "@shared/schema";
 
 const AdminPanel = () => {
   const [, setLocation] = useLocation();
@@ -33,6 +33,11 @@ const AdminPanel = () => {
   const [editingLink, setEditingLink] = useState<MovieLink | null>(null);
   const [editOriginalLink, setEditOriginalLink] = useState("");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  
+  // API Token states
+  const [tokenName, setTokenName] = useState("");
+  const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
+  const [generatedToken, setGeneratedToken] = useState("");
 
   useEffect(() => {
     // Check if user is logged in
@@ -46,6 +51,11 @@ const AdminPanel = () => {
   // Fetch movie links from API
   const { data: movieLinks = [], isLoading } = useQuery({
     queryKey: ["/api/movie-links"],
+  });
+
+  // Fetch API tokens
+  const { data: apiTokens = [], isLoading: isTokensLoading } = useQuery({
+    queryKey: ["/api/tokens"],
   });
 
   // Create movie link mutation
@@ -89,8 +99,90 @@ const AdminPanel = () => {
     },
   });
 
+  // Create API token mutation
+  const createTokenMutation = useMutation({
+    mutationFn: async (data: { tokenName: string }) => {
+      return apiRequest("/api/tokens", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tokens"] });
+      setGeneratedToken(data.tokenValue);
+      setTokenName("");
+      toast({
+        title: "Token Created",
+        description: "API token generated successfully! Copy it now.",
+      });
+    },
+  });
+
+  // Delete API token mutation
+  const deleteTokenMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/tokens/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tokens"] });
+      toast({
+        title: "Token Deactivated",
+        description: "API token has been deactivated.",
+      });
+    },
+  });
+
   const generateShortId = () => {
     return Math.random().toString(36).substring(2, 8);
+  };
+
+  // API Token handlers
+  const handleGenerateToken = async () => {
+    if (!tokenName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a token name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await createTokenMutation.mutateAsync({
+        tokenName: tokenName.trim(),
+      });
+      setIsTokenDialogOpen(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate token",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyToken = () => {
+    navigator.clipboard.writeText(generatedToken);
+    toast({
+      title: "Copied",
+      description: "Token copied to clipboard!",
+    });
+  };
+
+  const handleDeleteToken = async (tokenId: number) => {
+    if (confirm("Are you sure you want to deactivate this token?")) {
+      try {
+        await deleteTokenMutation.mutateAsync(tokenId);
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to deactivate token",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const handleGenerateLink = async () => {
@@ -261,9 +353,10 @@ const AdminPanel = () => {
 
       <div className="max-w-6xl mx-auto p-4">
         <Tabs defaultValue="home" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="home">Home</TabsTrigger>
             <TabsTrigger value="database">Database</TabsTrigger>
+            <TabsTrigger value="tokens">API Tokens</TabsTrigger>
           </TabsList>
 
           <TabsContent value="home" className="space-y-6">
@@ -497,6 +590,163 @@ const AdminPanel = () => {
                     No links found
                   </div>
                 )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* API Tokens Tab */}
+          <TabsContent value="tokens" className="space-y-6">
+            {/* Token Generator */}
+            <Card>
+              <CardContent className="p-6 space-y-4">
+                <h3 className="text-lg font-semibold mb-4">Generate New API Token</h3>
+                <div className="space-y-2">
+                  <Label htmlFor="tokenName">Token Name</Label>
+                  <Input
+                    id="tokenName"
+                    value={tokenName}
+                    onChange={(e) => setTokenName(e.target.value)}
+                    placeholder="Enter token name (e.g., Telegram Bot Token)"
+                  />
+                </div>
+                <Button 
+                  onClick={handleGenerateToken}
+                  disabled={createTokenMutation.isPending}
+                  className="w-full"
+                >
+                  {createTokenMutation.isPending ? "Generating..." : "Generate Token"}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Token Display Dialog */}
+            <Dialog open={isTokenDialogOpen} onOpenChange={setIsTokenDialogOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>New API Token Generated</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    Copy this token now! It will not be shown again for security reasons.
+                  </p>
+                  <div className="flex gap-2">
+                    <Input value={generatedToken} readOnly />
+                    <Button onClick={handleCopyToken} size="icon">
+                      <Copy className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <Button 
+                    onClick={() => {
+                      setIsTokenDialogOpen(false);
+                      setGeneratedToken("");
+                    }}
+                    className="w-full"
+                  >
+                    Close
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Existing Tokens Table */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Existing API Tokens</h3>
+                {isTokensLoading ? (
+                  <p className="text-center py-4">Loading tokens...</p>
+                ) : (apiTokens as ApiToken[]).length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">No tokens created yet</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Token Name</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead>Last Used</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {(apiTokens as ApiToken[]).map((token) => (
+                          <TableRow key={token.id}>
+                            <TableCell className="font-medium">{token.tokenName}</TableCell>
+                            <TableCell>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
+                                token.isActive 
+                                  ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                                  : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                              }`}>
+                                {token.isActive ? "Active" : "Inactive"}
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              {new Date(token.createdAt).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell>
+                              {token.lastUsed 
+                                ? new Date(token.lastUsed).toLocaleDateString()
+                                : "Never"
+                              }
+                            </TableCell>
+                            <TableCell>
+                              {token.isActive && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteToken(token.id)}
+                                  disabled={deleteTokenMutation.isPending}
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* API Usage Documentation */}
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">API Usage Instructions</h3>
+                <div className="space-y-4 text-sm">
+                  <div>
+                    <h4 className="font-medium mb-2">Endpoint:</h4>
+                    <code className="bg-muted px-2 py-1 rounded">POST /api/create-short-link</code>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Headers:</h4>
+                    <code className="bg-muted px-2 py-1 rounded">Authorization: Bearer YOUR_TOKEN_HERE</code>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Request Body:</h4>
+                    <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+{`{
+  "movieName": "Movie Title",
+  "originalLink": "http://original-download-link.com"
+}`}
+                    </pre>
+                  </div>
+                  <div>
+                    <h4 className="font-medium mb-2">Response:</h4>
+                    <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+{`{
+  "success": true,
+  "shortUrl": "https://yoursite.com/m/abc123",
+  "shortId": "abc123",
+  "movieName": "Movie Title",
+  "originalLink": "http://original-download-link.com",
+  "adsEnabled": true
+}`}
+                    </pre>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
