@@ -79,6 +79,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // API endpoint for creating movie link and returning short URL
+  app.post("/api/create-short-link", async (req, res) => {
+    try {
+      const { movieName, originalLink, adsEnabled = true } = req.body;
+      
+      // Validate input
+      if (!movieName || typeof movieName !== "string" || !movieName.trim()) {
+        return res.status(400).json({ error: "Movie name is required" });
+      }
+      
+      if (!originalLink || typeof originalLink !== "string" || !originalLink.trim()) {
+        return res.status(400).json({ error: "Original link is required" });
+      }
+      
+      // Generate unique short ID
+      const generateShortId = () => {
+        return Math.random().toString(36).substring(2, 8);
+      };
+      
+      const shortId = generateShortId();
+      
+      // Create movie link
+      const movieLink = await storage.createMovieLink({
+        movieName: movieName.trim(),
+        originalLink: originalLink.trim(),
+        shortId,
+        adsEnabled: Boolean(adsEnabled),
+      });
+      
+      // Return the short URL
+      const shortUrl = `${req.protocol}://${req.get('host')}/m/${shortId}`;
+      
+      res.status(201).json({
+        success: true,
+        shortUrl,
+        shortId,
+        movieName: movieLink.movieName,
+        originalLink: movieLink.originalLink,
+        adsEnabled: movieLink.adsEnabled
+      });
+      
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create short link" });
+    }
+  });
+
   // Delete a movie link
   app.delete("/api/movie-links/:id", async (req, res) => {
     try {

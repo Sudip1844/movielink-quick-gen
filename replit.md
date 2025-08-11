@@ -42,8 +42,10 @@ A movie link shortening service that allows admins to create short links for mov
 ### API Endpoints
 - `GET /api/movie-links` - Fetch all movie links
 - `POST /api/movie-links` - Create new movie link
+- `POST /api/create-short-link` - API endpoint to create short links (Input: movieName, originalLink | Output: shortUrl)
 - `GET /api/movie-links/:shortId` - Get specific movie link by short ID
 - `PATCH /api/movie-links/:shortId/views` - Update view count
+- `PATCH /api/movie-links/:id` - Update movie link original URL
 - `DELETE /api/movie-links/:id` - Delete movie link
 
 ## User Preferences
