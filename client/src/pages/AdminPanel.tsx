@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Copy, LogOut, Trash2 } from "lucide-react";
+import { Copy, LogOut, Trash2, Edit } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -29,6 +30,9 @@ const AdminPanel = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "date">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [editingLink, setEditingLink] = useState<MovieLink | null>(null);
+  const [editOriginalLink, setEditOriginalLink] = useState("");
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -66,6 +70,22 @@ const AdminPanel = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movie-links"] });
+    },
+  });
+
+  // Update movie link mutation
+  const updateMovieLinkMutation = useMutation({
+    mutationFn: async ({ id, originalLink }: { id: number; originalLink: string }) => {
+      return apiRequest(`/api/movie-links/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ originalLink }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/movie-links"] });
+      setIsEditDialogOpen(false);
+      setEditingLink(null);
+      setEditOriginalLink("");
     },
   });
 
@@ -133,6 +153,40 @@ const AdminPanel = () => {
       toast({
         title: "Error",
         description: "Failed to delete movie link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditLink = (link: MovieLink) => {
+    setEditingLink(link);
+    setEditOriginalLink(link.originalLink);
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateLink = async () => {
+    if (!editingLink || !editOriginalLink.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a valid original link",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateMovieLinkMutation.mutateAsync({
+        id: editingLink.id,
+        originalLink: editOriginalLink.trim(),
+      });
+      toast({
+        title: "Updated",
+        description: "Link updated successfully!",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update movie link",
         variant: "destructive",
       });
     }
@@ -370,7 +424,7 @@ const AdminPanel = () => {
                          <TableHead className="min-w-[100px]">Short Link</TableHead>
                          <TableHead className="hidden sm:table-cell">Views</TableHead>
                          <TableHead className="hidden lg:table-cell">Date Added</TableHead>
-                         <TableHead className="w-[80px]">Actions</TableHead>
+                         <TableHead className="w-[120px]">Actions</TableHead>
                        </TableRow>
                      </TableHeader>
                     <TableBody>
@@ -384,13 +438,22 @@ const AdminPanel = () => {
                            <TableCell className="hidden sm:table-cell">{link.views}</TableCell>
                            <TableCell className="hidden lg:table-cell">{new Date(link.dateAdded).toLocaleDateString()}</TableCell>
                            <TableCell>
-                             <Button
-                               variant="destructive"
-                               size="sm"
-                               onClick={() => handleDeleteLink(link.id)}
-                             >
-                               <Trash2 className="w-4 h-4" />
-                             </Button>
+                             <div className="flex gap-2">
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => handleEditLink(link)}
+                               >
+                                 <Edit className="w-4 h-4" />
+                               </Button>
+                               <Button
+                                 variant="destructive"
+                                 size="sm"
+                                 onClick={() => handleDeleteLink(link.id)}
+                               >
+                                 <Trash2 className="w-4 h-4" />
+                               </Button>
+                             </div>
                            </TableCell>
                          </TableRow>
                       ))}
@@ -406,6 +469,45 @@ const AdminPanel = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Movie Link</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Movie Name</Label>
+                <Input value={editingLink?.movieName || ""} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Short ID</Label>
+                <Input value={editingLink?.shortId || ""} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editOriginalLink">Original Link</Label>
+                <Input
+                  id="editOriginalLink"
+                  value={editOriginalLink}
+                  onChange={(e) => setEditOriginalLink(e.target.value)}
+                  placeholder="Enter new original movie link"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleUpdateLink}
+                  disabled={updateMovieLinkMutation.isPending}
+                >
+                  {updateMovieLinkMutation.isPending ? "Updating..." : "Update"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

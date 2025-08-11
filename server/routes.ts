@@ -59,6 +59,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update movie link original URL
+  app.patch("/api/movie-links/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      const { originalLink } = req.body;
+      if (!originalLink || typeof originalLink !== "string") {
+        return res.status(400).json({ error: "Original link is required" });
+      }
+      
+      const updatedLink = await storage.updateMovieLinkOriginalUrl(id, originalLink);
+      res.json(updatedLink);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update movie link" });
+    }
+  });
+
   // Delete a movie link
   app.delete("/api/movie-links/:id", async (req, res) => {
     try {

@@ -6,6 +6,7 @@ export interface IStorage {
   getMovieLinks(): Promise<MovieLink[]>;
   getMovieLinkByShortId(shortId: string): Promise<MovieLink | undefined>;
   updateMovieLinkViews(shortId: string): Promise<void>;
+  updateMovieLinkOriginalUrl(id: number, originalLink: string): Promise<MovieLink>;
   deleteMovieLink(id: number): Promise<void>;
 }
 
@@ -49,6 +50,16 @@ export class MemStorage implements IStorage {
       link.views += 1;
       this.movieLinks.set(link.id, link);
     }
+  }
+
+  async updateMovieLinkOriginalUrl(id: number, originalLink: string): Promise<MovieLink> {
+    const link = this.movieLinks.get(id);
+    if (!link) {
+      throw new Error("Movie link not found");
+    }
+    const updatedLink = { ...link, originalLink };
+    this.movieLinks.set(id, updatedLink);
+    return updatedLink;
   }
 
   async deleteMovieLink(id: number): Promise<void> {
@@ -95,6 +106,19 @@ export class DatabaseStorage implements IStorage {
 
   async updateMovieLinkViews(shortId: string): Promise<void> {
     return this.updateViews(shortId);
+  }
+
+  async updateMovieLinkOriginalUrl(id: number, originalLink: string): Promise<MovieLink> {
+    const { db } = await import('./db');
+    const { eq } = await import('drizzle-orm');
+    const result = await db.update(movieLinks)
+      .set({ originalLink })
+      .where(eq(movieLinks.id, id))
+      .returning();
+    if (result.length === 0) {
+      throw new Error("Movie link not found");
+    }
+    return result[0];
   }
 }
 
