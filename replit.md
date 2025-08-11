@@ -29,6 +29,12 @@ A movie link shortening service that allows admins to create short links for mov
     - Added Recent Links section below link generator showing last 10 created links with copy buttons
     - Fixed generated link clearing after copying to prevent permanent display
     - Generated links now move to recent links section after copying
+  - **Secure API Implementation (2025-08-11)**: Added token-based authentication for bot integration
+    - Implemented API token table with secure token generation
+    - Added Bearer token authentication middleware for /api/create-short-link endpoint
+    - Created API token management routes for admin panel
+    - Enhanced database table display with Views column and copy buttons for short links
+    - Updated API documentation with authentication examples and error handling
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management

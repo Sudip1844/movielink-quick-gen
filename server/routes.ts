@@ -1,11 +1,91 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMovieLinkSchema } from "@shared/schema";
+import { insertMovieLinkSchema, createShortLinkSchema } from "@shared/schema";
 import { z } from "zod";
+import crypto from "crypto";
+
+// Authentication middleware for secure API endpoints
+async function authenticateToken(req: Request, res: Response, next: NextFunction) {
+  const authHeader = req.headers.authorization;
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    return res.status(401).json({ error: "Access token required" });
+  }
+
+  try {
+    const apiToken = await storage.getApiTokenByValue(token);
+    if (!apiToken) {
+      return res.status(403).json({ error: "Invalid or inactive token" });
+    }
+
+    // Update last used timestamp
+    await storage.updateTokenLastUsed(token);
+    
+    // Add token info to request for potential use
+    (req as any).apiToken = apiToken;
+    next();
+  } catch (error) {
+    return res.status(403).json({ error: "Token verification failed" });
+  }
+}
+
+// Utility function to generate short IDs
+function generateShortId(): string {
+  return crypto.randomBytes(3).toString('hex');
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Movie Links API routes
+  
+  // Secure API endpoint for creating short links (for bots)
+  app.post("/api/create-short-link", authenticateToken, async (req, res) => {
+    try {
+      const result = createShortLinkSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: result.error.issues 
+        });
+      }
+      
+      const { movieName, originalLink, adsEnabled } = result.data;
+      
+      // Generate unique short ID
+      let shortId: string;
+      let attempts = 0;
+      do {
+        shortId = generateShortId();
+        attempts++;
+        if (attempts > 10) {
+          return res.status(500).json({ error: "Failed to generate unique short ID" });
+        }
+      } while (await storage.getMovieLinkByShortId(shortId));
+      
+      const movieLink = await storage.createMovieLink({
+        movieName,
+        originalLink,
+        shortId,
+        adsEnabled: adsEnabled ?? true,
+      });
+      
+      const shortUrl = `${req.protocol}://${req.get('host')}/m/${shortId}`;
+      
+      res.status(201).json({
+        success: true,
+        shortUrl,
+        shortId: movieLink.shortId,
+        movieName: movieLink.movieName,
+        originalLink: movieLink.originalLink,
+        adsEnabled: movieLink.adsEnabled,
+      });
+    } catch (error) {
+      console.error("Error creating short link:", error);
+      res.status(500).json({ error: "Failed to create short link" });
+    }
+  });
+
+  // Movie Links API routes (admin panel)
   
   // Get all movie links
   app.get("/api/movie-links", async (req, res) => {
@@ -137,6 +217,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Failed to delete movie link" });
+    }
+  });
+
+  // API Token management routes (admin only)
+  app.get("/api/tokens", async (req, res) => {
+    try {
+      const tokens = await storage.getApiTokens();
+      res.json(tokens);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch API tokens" });
+    }
+  });
+
+  app.post("/api/tokens", async (req, res) => {
+    try {
+      const { tokenName } = req.body;
+      
+      if (!tokenName || typeof tokenName !== "string") {
+        return res.status(400).json({ error: "Token name is required" });
+      }
+      
+      // Generate secure token
+      const tokenValue = crypto.randomBytes(32).toString('hex');
+      
+      const apiToken = await storage.createApiToken({
+        tokenName,
+        tokenValue,
+        isActive: true,
+      });
+      
+      res.status(201).json(apiToken);
+    } catch (error) {
+      console.error("Error creating API token:", error);
+      res.status(500).json({ error: "Failed to create API token" });
+    }
+  });
+
+  app.delete("/api/tokens/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid token ID" });
+      }
+      
+      await storage.deactivateApiToken(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to deactivate token" });
     }
   });
 
