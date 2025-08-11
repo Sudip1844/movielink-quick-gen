@@ -420,10 +420,10 @@ const AdminPanel = () => {
                      <TableHeader>
                        <TableRow>
                          <TableHead className="min-w-[150px]">Movie Name</TableHead>
-                         <TableHead className="hidden md:table-cell min-w-[200px]">Original Link</TableHead>
-                         <TableHead className="min-w-[100px]">Short Link</TableHead>
-                         <TableHead className="hidden sm:table-cell">Views</TableHead>
-                         <TableHead className="hidden lg:table-cell">Date Added</TableHead>
+                         <TableHead className="hidden lg:table-cell min-w-[200px]">Original Link</TableHead>
+                         <TableHead className="min-w-[120px]">Short Link</TableHead>
+                         <TableHead className="min-w-[80px]">Views</TableHead>
+                         <TableHead className="hidden xl:table-cell">Date Added</TableHead>
                          <TableHead className="w-[120px]">Actions</TableHead>
                        </TableRow>
                      </TableHeader>
@@ -431,12 +431,28 @@ const AdminPanel = () => {
                       {filteredLinks.map((link) => (
                          <TableRow key={link.id}>
                            <TableCell className="font-medium">{link.movieName}</TableCell>
-                           <TableCell className="hidden md:table-cell max-w-64 truncate">{link.originalLink}</TableCell>
+                           <TableCell className="hidden lg:table-cell max-w-64 truncate" title={link.originalLink}>{link.originalLink}</TableCell>
                            <TableCell>
-                             <code className="text-sm">/m/{link.shortId}</code>
+                             <div className="flex items-center gap-2">
+                               <code className="text-sm">/m/{link.shortId}</code>
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 onClick={() => {
+                                   const fullUrl = `${window.location.origin}/m/${link.shortId}`;
+                                   navigator.clipboard.writeText(fullUrl);
+                                   toast({
+                                     title: "Copied",
+                                     description: "Short link copied to clipboard!",
+                                   });
+                                 }}
+                               >
+                                 <Copy className="w-4 h-4" />
+                               </Button>
+                             </div>
                            </TableCell>
-                           <TableCell className="hidden sm:table-cell">{link.views}</TableCell>
-                           <TableCell className="hidden lg:table-cell">{new Date(link.dateAdded).toLocaleDateString()}</TableCell>
+                           <TableCell className="font-medium">{link.views}</TableCell>
+                           <TableCell className="hidden xl:table-cell">{new Date(link.dateAdded).toLocaleDateString()}</TableCell>
                            <TableCell>
                              <div className="flex gap-2">
                                <Button
