@@ -293,52 +293,52 @@ const AdminPanel = () => {
     });
   };
 
-  const filteredLinks = (movieLinks as MovieLink[])
+  const filteredLinks = (movieLinks as any[])
     .filter(link => 
-      link?.movieName?.toLowerCase()?.includes(searchTerm.toLowerCase()) ?? false
+      link?.movie_name?.toLowerCase()?.includes(searchTerm.toLowerCase()) ?? false
     )
     .sort((a, b) => {
       if (sortBy === "name") {
-        const nameA = a?.movieName || "";
-        const nameB = b?.movieName || "";
+        const nameA = a?.movie_name || "";
+        const nameB = b?.movie_name || "";
         const comparison = nameA.localeCompare(nameB);
         return sortOrder === "asc" ? comparison : -comparison;
       } else {
-        const dateA = a?.dateAdded ? new Date(a.dateAdded).getTime() : 0;
-        const dateB = b?.dateAdded ? new Date(b.dateAdded).getTime() : 0;
+        const dateA = a?.date_added ? new Date(a.date_added).getTime() : 0;
+        const dateB = b?.date_added ? new Date(b.date_added).getTime() : 0;
         const comparison = dateA - dateB;
         return sortOrder === "asc" ? comparison : -comparison;
       }
     });
 
-  const totalViews = (movieLinks as MovieLink[]).reduce((sum, link) => sum + (link?.views || 0), 0);
+  const totalViews = (movieLinks as any[]).reduce((sum, link) => sum + (link?.views || 0), 0);
   
   // Calculate today's stats
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const todayLinks = (movieLinks as MovieLink[]).filter(link => {
-    if (!link?.dateAdded) return false;
-    const linkDate = new Date(link.dateAdded);
+  const todayLinks = (movieLinks as any[]).filter(link => {
+    if (!link?.date_added) return false;
+    const linkDate = new Date(link.date_added);
     linkDate.setHours(0, 0, 0, 0);
     return linkDate.getTime() === today.getTime();
   }).length;
   
-  const todayViews = (movieLinks as MovieLink[])
+  const todayViews = (movieLinks as any[])
     .filter(link => {
-      if (!link?.dateAdded) return false;
-      const linkDate = new Date(link.dateAdded);
+      if (!link?.date_added) return false;
+      const linkDate = new Date(link.date_added);
       linkDate.setHours(0, 0, 0, 0);
       return linkDate.getTime() === today.getTime();
     })
     .reduce((sum, link) => sum + (link?.views || 0), 0);
   
   // Get the most recent 5 links for the recent links section
-  const recentLinks = (movieLinks as MovieLink[])
+  const recentLinks = (movieLinks as any[])
     .slice()
     .sort((a, b) => {
-      const dateA = a?.dateAdded ? new Date(a.dateAdded).getTime() : 0;
-      const dateB = b?.dateAdded ? new Date(b.dateAdded).getTime() : 0;
+      const dateA = a?.date_added ? new Date(a.date_added).getTime() : 0;
+      const dateB = b?.date_added ? new Date(b.date_added).getTime() : 0;
       return dateB - dateA;
     })
     .slice(0, 5);
@@ -374,7 +374,7 @@ const AdminPanel = () => {
             <div className="grid grid-cols-2 gap-4">
               <Card>
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{(movieLinks as MovieLink[]).length}</div>
+                  <div className="text-2xl font-bold text-primary">{(movieLinks as any[]).length}</div>
                   <div className="text-sm text-muted-foreground">Total Links</div>
                 </CardContent>
               </Card>
@@ -459,9 +459,9 @@ const AdminPanel = () => {
                     {recentLinks.map((link) => (
                       <div key={link.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{link.movieName}</p>
+                          <p className="font-medium truncate">{link.movie_name}</p>
                           <p className="text-sm text-muted-foreground truncate">
-                            {window.location.origin}/m/{link.shortId}
+                            {window.location.origin}/m/{link.short_id}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 ml-2">
@@ -470,7 +470,7 @@ const AdminPanel = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/m/${link.shortId}`);
+                              navigator.clipboard.writeText(`${window.location.origin}/m/${link.short_id}`);
                               toast({
                                 title: "Copied",
                                 description: "Link copied to clipboard!",
@@ -549,16 +549,16 @@ const AdminPanel = () => {
                     <TableBody>
                       {filteredLinks.map((link) => (
                          <TableRow key={link.id}>
-                           <TableCell className="font-medium">{link.movieName}</TableCell>
-                           <TableCell className="hidden lg:table-cell max-w-64 truncate" title={link.originalLink}>{link.originalLink}</TableCell>
+                           <TableCell className="font-medium">{link.movie_name}</TableCell>
+                           <TableCell className="hidden lg:table-cell max-w-64 truncate" title={link.original_link}>{link.original_link}</TableCell>
                            <TableCell>
                              <div className="flex items-center gap-2">
-                               <code className="text-sm">/m/{link.shortId}</code>
+                               <code className="text-sm">/m/{link.short_id}</code>
                                <Button
                                  variant="outline"
                                  size="sm"
                                  onClick={() => {
-                                   const fullUrl = `${window.location.origin}/m/${link.shortId}`;
+                                   const fullUrl = `${window.location.origin}/m/${link.short_id}`;
                                    navigator.clipboard.writeText(fullUrl);
                                    toast({
                                      title: "Copied",
@@ -571,7 +571,7 @@ const AdminPanel = () => {
                              </div>
                            </TableCell>
                            <TableCell className="font-medium">{link.views}</TableCell>
-                           <TableCell className="hidden xl:table-cell">{new Date(link.dateAdded).toLocaleDateString()}</TableCell>
+                           <TableCell className="hidden xl:table-cell">{new Date(link.date_added).toLocaleDateString()}</TableCell>
                            <TableCell>
                              <div className="flex gap-2">
                                <Button
@@ -664,7 +664,7 @@ const AdminPanel = () => {
                 <h3 className="text-lg font-semibold mb-4">Existing API Tokens</h3>
                 {isTokensLoading ? (
                   <p className="text-center py-4">Loading tokens...</p>
-                ) : (apiTokens as ApiToken[]).length === 0 ? (
+                ) : (apiTokens as any[]).length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">No tokens created yet</p>
                 ) : (
                   <div className="overflow-x-auto">
@@ -679,29 +679,29 @@ const AdminPanel = () => {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {(apiTokens as ApiToken[]).map((token) => (
+                        {(apiTokens as any[]).map((token) => (
                           <TableRow key={token.id}>
-                            <TableCell className="font-medium">{token.tokenName}</TableCell>
+                            <TableCell className="font-medium">{token.token_name}</TableCell>
                             <TableCell>
                               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                token.isActive 
+                                token.is_active 
                                   ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                   : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
                               }`}>
-                                {token.isActive ? "Active" : "Inactive"}
+                                {token.is_active ? "Active" : "Inactive"}
                               </span>
                             </TableCell>
                             <TableCell>
-                              {new Date(token.createdAt).toLocaleDateString()}
+                              {new Date(token.created_at).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
-                              {token.lastUsed 
-                                ? new Date(token.lastUsed).toLocaleDateString()
+                              {token.last_used 
+                                ? new Date(token.last_used).toLocaleDateString()
                                 : "Never"
                               }
                             </TableCell>
                             <TableCell>
-                              {token.isActive && (
+                              {token.is_active && (
                                 <Button
                                   variant="destructive"
                                   size="sm"
