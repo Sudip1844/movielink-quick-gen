@@ -120,97 +120,136 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Database storage implementation
+// Supabase storage implementation using REST API
 export class DatabaseStorage implements IStorage {
+  private supabaseClient: any;
+
+  constructor() {
+    this.initSupabase();
+  }
+
+  private async initSupabase() {
+    const { supabase } = await import('./supabase-client');
+    this.supabaseClient = supabase;
+  }
+
   async getMovieLinks(): Promise<MovieLink[]> {
-    const { db } = await import('./db');
-    return await db.select().from(movieLinks);
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.select('movie_links');
   }
 
   async getMovieLinkByShortId(shortId: string): Promise<MovieLink | undefined> {
-    const { db } = await import('./db');
-    const { eq } = await import('drizzle-orm');
-    const result = await db.select().from(movieLinks).where(eq(movieLinks.shortId, shortId));
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.select('movie_links', '*', { short_id: shortId });
     return result[0];
   }
 
   async createMovieLink(insertMovieLink: InsertMovieLink): Promise<MovieLink> {
-    const { db } = await import('./db');
-    const result = await db.insert(movieLinks).values({
-      ...insertMovieLink,
-      adsEnabled: insertMovieLink.adsEnabled ?? true,
-    }).returning();
-    return result[0];
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.insert('movie_links', {
+      movie_name: insertMovieLink.movieName,
+      original_link: insertMovieLink.originalLink,
+      short_id: insertMovieLink.shortId,
+      ads_enabled: insertMovieLink.adsEnabled ?? true,
+    });
   }
 
   async deleteMovieLink(id: number): Promise<void> {
-    const { db } = await import('./db');
-    const { eq } = await import('drizzle-orm');
-    await db.delete(movieLinks).where(eq(movieLinks.id, id));
-  }
-
-  async updateViews(shortId: string): Promise<void> {
-    const { db } = await import('./db');
-    const { eq, sql } = await import('drizzle-orm');
-    await db.update(movieLinks)
-      .set({ views: sql`${movieLinks.views} + 1` })
-      .where(eq(movieLinks.shortId, shortId));
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    await this.supabaseClient.delete('movie_links', { id });
   }
 
   async updateMovieLinkViews(shortId: string): Promise<void> {
-    return this.updateViews(shortId);
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    // First get current views
+    const current = await this.supabaseClient.select('movie_links', 'views', { short_id: shortId });
+    if (current[0]) {
+      const newViews = (current[0].views || 0) + 1;
+      await this.supabaseClient.update('movie_links', { views: newViews }, { short_id: shortId });
+    }
   }
 
   async updateMovieLinkOriginalUrl(id: number, originalLink: string): Promise<MovieLink> {
-    const { db } = await import('./db');
-    const { eq } = await import('drizzle-orm');
-    const result = await db.update(movieLinks)
-      .set({ originalLink })
-      .where(eq(movieLinks.id, id))
-      .returning();
-    if (result.length === 0) {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.update('movie_links', { original_link: originalLink }, { id });
+    if (!result) {
       throw new Error("Movie link not found");
     }
-    return result[0];
+    return result;
   }
 
   // API Token methods
   async createApiToken(insertToken: InsertApiToken): Promise<ApiToken> {
-    const { db } = await import('./db');
-    const result = await db.insert(apiTokens).values(insertToken).returning();
-    return result[0];
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.insert('api_tokens', {
+      token_name: insertToken.tokenName,
+      token_value: insertToken.tokenValue,
+      is_active: insertToken.isActive ?? true,
+    });
   }
 
   async getApiTokens(): Promise<ApiToken[]> {
-    const { db } = await import('./db');
-    return await db.select().from(apiTokens);
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.select('api_tokens');
   }
 
   async getApiTokenByValue(tokenValue: string): Promise<ApiToken | undefined> {
-    const { db } = await import('./db');
-    const { eq, and } = await import('drizzle-orm');
-    const result = await db.select().from(apiTokens)
-      .where(and(
-        eq(apiTokens.tokenValue, tokenValue),
-        eq(apiTokens.isActive, true)
-      ));
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.select('api_tokens', '*', { 
+      token_value: tokenValue, 
+      is_active: true 
+    });
     return result[0];
   }
 
   async updateTokenLastUsed(tokenValue: string): Promise<void> {
-    const { db } = await import('./db');
-    const { eq } = await import('drizzle-orm');
-    await db.update(apiTokens)
-      .set({ lastUsed: new Date() })
-      .where(eq(apiTokens.tokenValue, tokenValue));
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    await this.supabaseClient.update('api_tokens', 
+      { last_used: new Date().toISOString() }, 
+      { token_value: tokenValue }
+    );
   }
 
   async deactivateApiToken(id: number): Promise<void> {
-    const { db } = await import('./db');
-    const { eq } = await import('drizzle-orm');
-    await db.update(apiTokens)
-      .set({ isActive: false })
-      .where(eq(apiTokens.id, id));
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    await this.supabaseClient.update('api_tokens', 
+      { is_active: false }, 
+      { id }
+    );
   }
 }
 

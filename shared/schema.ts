@@ -1,24 +1,24 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, bigserial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const movieLinks = pgTable("movie_links", {
-  id: serial("id").primaryKey(),
+  id: bigserial("id", { mode: "number" }).primaryKey(),
   movieName: text("movie_name").notNull(),
   originalLink: text("original_link").notNull(),
   shortId: text("short_id").notNull().unique(),
   views: integer("views").notNull().default(0),
-  dateAdded: timestamp("date_added").notNull().defaultNow(),
+  dateAdded: timestamp("date_added", { withTimezone: true }).notNull().defaultNow(),
   adsEnabled: boolean("ads_enabled").notNull().default(true),
 });
 
 export const apiTokens = pgTable("api_tokens", {
-  id: serial("id").primaryKey(),
+  id: bigserial("id", { mode: "number" }).primaryKey(),
   tokenName: text("token_name").notNull(),
   tokenValue: text("token_value").notNull().unique(),
   isActive: boolean("is_active").notNull().default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  lastUsed: timestamp("last_used"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  lastUsed: timestamp("last_used", { withTimezone: true }),
 });
 
 export const insertMovieLinkSchema = createInsertSchema(movieLinks).omit({

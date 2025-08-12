@@ -43,6 +43,13 @@ A movie link shortening service that allows admins to create short links for mov
     - Removed duplicate API endpoint for better code maintenance
     - Implemented proper today's statistics calculation for links and views
     - Added admin configuration API endpoint for secure credential management
+  - **Replit Migration & Supabase Integration (2025-08-12)**: Migrated project from Replit Agent to standard Replit
+    - Successfully migrated from memory storage to Supabase PostgreSQL database
+    - Implemented Supabase REST API client to bypass network restrictions
+    - All movie links and API tokens now stored permanently in Supabase
+    - Admin credentials loaded from .env file (ADMIN_ID, ADMIN_PASSWORD)
+    - Database connection established via REST API instead of direct PostgreSQL connection
+    - Maintained full functionality while ensuring data persistence in Supabase
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management
