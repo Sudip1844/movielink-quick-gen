@@ -238,6 +238,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update API token status
+  app.patch("/api/tokens/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid token ID" });
+      }
+      
+      const { isActive } = req.body;
+      if (typeof isActive !== "boolean") {
+        return res.status(400).json({ error: "isActive field is required and must be boolean" });
+      }
+      
+      const updatedToken = await storage.updateApiTokenStatus(id, isActive);
+      res.json(updatedToken);
+    } catch (error) {
+      console.error("Error updating API token:", error);
+      res.status(500).json({ error: "Failed to update API token" });
+    }
+  });
+
   app.delete("/api/tokens/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);

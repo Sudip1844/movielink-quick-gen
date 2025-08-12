@@ -14,6 +14,7 @@ export interface IStorage {
   getApiTokens(): Promise<ApiToken[]>;
   getApiTokenByValue(tokenValue: string): Promise<ApiToken | undefined>;
   updateTokenLastUsed(tokenValue: string): Promise<void>;
+  updateApiTokenStatus(id: number, isActive: boolean): Promise<ApiToken>;
   deactivateApiToken(id: number): Promise<void>;
 }
 
@@ -109,6 +110,16 @@ export class MemStorage implements IStorage {
       token.lastUsed = new Date();
       this.apiTokens.set(token.id, token);
     }
+  }
+
+  async updateApiTokenStatus(id: number, isActive: boolean): Promise<ApiToken> {
+    const token = this.apiTokens.get(id);
+    if (!token) {
+      throw new Error("API token not found");
+    }
+    token.isActive = isActive;
+    this.apiTokens.set(id, token);
+    return token;
   }
 
   async deactivateApiToken(id: number): Promise<void> {
@@ -239,6 +250,21 @@ export class DatabaseStorage implements IStorage {
       { last_used: new Date().toISOString() }, 
       { token_value: tokenValue }
     );
+  }
+
+  async updateApiTokenStatus(id: number, isActive: boolean): Promise<ApiToken> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.update('api_tokens', 
+      { is_active: isActive }, 
+      { id }
+    );
+    if (!result) {
+      throw new Error("API token not found");
+    }
+    return result;
   }
 
   async deactivateApiToken(id: number): Promise<void> {

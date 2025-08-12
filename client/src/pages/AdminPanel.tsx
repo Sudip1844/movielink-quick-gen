@@ -38,6 +38,8 @@ const AdminPanel = () => {
   const [tokenName, setTokenName] = useState("");
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [generatedToken, setGeneratedToken] = useState("");
+  const [editingToken, setEditingToken] = useState<any | null>(null);
+  const [isEditTokenDialogOpen, setIsEditTokenDialogOpen] = useState(false);
 
   useEffect(() => {
     // Check if user is logged in
@@ -118,6 +120,25 @@ const AdminPanel = () => {
     },
   });
 
+  // Update API token mutation
+  const updateTokenMutation = useMutation({
+    mutationFn: async ({ tokenId, isActive }: { tokenId: number; isActive: boolean }) => {
+      return apiRequest(`/api/tokens/${tokenId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ isActive }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tokens"] });
+      setIsEditTokenDialogOpen(false);
+      setEditingToken(null);
+      toast({
+        title: "Token Updated",
+        description: "API token status updated successfully.",
+      });
+    },
+  });
+
   // Delete API token mutation
   const deleteTokenMutation = useMutation({
     mutationFn: async (id: number) => {
@@ -128,8 +149,8 @@ const AdminPanel = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/tokens"] });
       toast({
-        title: "Token Deactivated",
-        description: "API token has been deactivated.",
+        title: "Token Deleted",
+        description: "API token has been deleted.",
       });
     },
   });
@@ -171,14 +192,36 @@ const AdminPanel = () => {
     });
   };
 
+  const handleEditToken = (token: any) => {
+    setEditingToken(token);
+    setIsEditTokenDialogOpen(true);
+  };
+
+  const handleUpdateTokenStatus = async (isActive: boolean) => {
+    if (!editingToken) return;
+    
+    try {
+      await updateTokenMutation.mutateAsync({
+        tokenId: editingToken.id,
+        isActive,
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update token status",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleDeleteToken = async (tokenId: number) => {
-    if (confirm("Are you sure you want to deactivate this token?")) {
+    if (confirm("Are you sure you want to delete this token?")) {
       try {
         await deleteTokenMutation.mutateAsync(tokenId);
       } catch (error) {
         toast({
           title: "Error",
-          description: "Failed to deactivate token",
+          description: "Failed to delete token",
           variant: "destructive",
         });
       }
@@ -701,16 +744,26 @@ const AdminPanel = () => {
                               }
                             </TableCell>
                             <TableCell>
-                              {token.is_active && (
+                              <div className="flex gap-2">
                                 <Button
-                                  variant="destructive"
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => handleDeleteToken(token.id)}
-                                  disabled={deleteTokenMutation.isPending}
+                                  onClick={() => handleEditToken(token)}
+                                  disabled={updateTokenMutation.isPending}
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Edit className="w-4 h-4" />
                                 </Button>
-                              )}
+                                {!token.is_active && (
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleDeleteToken(token.id)}
+                                    disabled={deleteTokenMutation.isPending}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -761,6 +814,57 @@ const AdminPanel = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Edit Token Dialog */}
+        <Dialog open={isEditTokenDialogOpen} onOpenChange={setIsEditTokenDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit API Token</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Token Name</Label>
+                <Input value={editingToken?.token_name || ""} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Token Value</Label>
+                <div className="flex gap-2">
+                  <Input value={editingToken?.token_value || ""} readOnly />
+                  <Button 
+                    onClick={() => {
+                      if (editingToken?.token_value) {
+                        navigator.clipboard.writeText(editingToken.token_value);
+                        toast({
+                          title: "Copied",
+                          description: "Token copied to clipboard!",
+                        });
+                      }
+                    }} 
+                    size="icon"
+                  >
+                    <Copy className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    checked={editingToken?.is_active || false}
+                    onCheckedChange={handleUpdateTokenStatus}
+                    disabled={updateTokenMutation.isPending}
+                  />
+                  <Label>{editingToken?.is_active ? "Active" : "Inactive"}</Label>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setIsEditTokenDialogOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
