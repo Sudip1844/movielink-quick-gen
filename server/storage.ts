@@ -83,6 +83,7 @@ export class MemStorage implements IStorage {
     const token: ApiToken = {
       ...insertToken,
       id,
+      isActive: insertToken.isActive ?? true,
       createdAt: new Date(),
       lastUsed: null,
     };

@@ -54,7 +54,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin-config", async (req, res) => {
     try {
       const adminId = process.env.ADMIN_ID || envConfig.ADMIN_ID || "sbiswas1844";
-      const adminPassword = process.env.ADMIN_PASSWORD || envConfig.ADMIN_PASSWORD || "save@184455";
+      const adminPassword = process.env.ADMIN_PASSWORD || envConfig.ADMIN_PASSWORD || "sudip@184455";
       
       res.json({
         adminId,
