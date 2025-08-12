@@ -62,10 +62,11 @@ export class SupabaseClient {
         throw new Error(`Supabase select failed: ${response.statusText}`);
       }
 
-      return await response.json() as any[];
+      const result = await response.json();
+      return Array.isArray(result) ? result : [];
     } catch (error) {
       console.error('Supabase select error:', error);
-      throw error;
+      return [];
     }
   }
 

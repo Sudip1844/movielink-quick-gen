@@ -295,25 +295,30 @@ const AdminPanel = () => {
 
   const filteredLinks = (movieLinks as MovieLink[])
     .filter(link => 
-      link.movieName.toLowerCase().includes(searchTerm.toLowerCase())
+      link?.movieName?.toLowerCase()?.includes(searchTerm.toLowerCase()) ?? false
     )
     .sort((a, b) => {
       if (sortBy === "name") {
-        const comparison = a.movieName.localeCompare(b.movieName);
+        const nameA = a?.movieName || "";
+        const nameB = b?.movieName || "";
+        const comparison = nameA.localeCompare(nameB);
         return sortOrder === "asc" ? comparison : -comparison;
       } else {
-        const comparison = new Date(a.dateAdded).getTime() - new Date(b.dateAdded).getTime();
+        const dateA = a?.dateAdded ? new Date(a.dateAdded).getTime() : 0;
+        const dateB = b?.dateAdded ? new Date(b.dateAdded).getTime() : 0;
+        const comparison = dateA - dateB;
         return sortOrder === "asc" ? comparison : -comparison;
       }
     });
 
-  const totalViews = (movieLinks as MovieLink[]).reduce((sum, link) => sum + link.views, 0);
+  const totalViews = (movieLinks as MovieLink[]).reduce((sum, link) => sum + (link?.views || 0), 0);
   
   // Calculate today's stats
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
   const todayLinks = (movieLinks as MovieLink[]).filter(link => {
+    if (!link?.dateAdded) return false;
     const linkDate = new Date(link.dateAdded);
     linkDate.setHours(0, 0, 0, 0);
     return linkDate.getTime() === today.getTime();
@@ -321,16 +326,21 @@ const AdminPanel = () => {
   
   const todayViews = (movieLinks as MovieLink[])
     .filter(link => {
+      if (!link?.dateAdded) return false;
       const linkDate = new Date(link.dateAdded);
       linkDate.setHours(0, 0, 0, 0);
       return linkDate.getTime() === today.getTime();
     })
-    .reduce((sum, link) => sum + link.views, 0);
+    .reduce((sum, link) => sum + (link?.views || 0), 0);
   
   // Get the most recent 5 links for the recent links section
   const recentLinks = (movieLinks as MovieLink[])
     .slice()
-    .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
+    .sort((a, b) => {
+      const dateA = a?.dateAdded ? new Date(a.dateAdded).getTime() : 0;
+      const dateB = b?.dateAdded ? new Date(b.dateAdded).getTime() : 0;
+      return dateB - dateA;
+    })
     .slice(0, 5);
 
   return (
