@@ -40,8 +40,23 @@ export const createShortLinkSchema = z.object({
   // Note: adsEnabled is not included for API requests - always true
 });
 
+// Admin Settings Schema
+export const adminSettings = pgTable("admin_settings", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  adminId: text("admin_id").notNull().unique(),
+  adminPassword: text("admin_password").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertAdminSettingsSchema = createInsertSchema(adminSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export type InsertMovieLink = z.infer<typeof insertMovieLinkSchema>;
 export type MovieLink = typeof movieLinks.$inferSelect;
 export type InsertApiToken = z.infer<typeof insertApiTokenSchema>;
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type CreateShortLinkRequest = z.infer<typeof createShortLinkSchema>;
+export type InsertAdminSettings = z.infer<typeof insertAdminSettingsSchema>;
+export type AdminSettings = typeof adminSettings.$inferSelect;

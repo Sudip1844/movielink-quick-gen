@@ -32,19 +32,33 @@ CREATE INDEX idx_movie_links_date_added ON movie_links(date_added DESC);
 CREATE INDEX idx_api_tokens_token_value ON api_tokens(token_value);
 CREATE INDEX idx_api_tokens_active ON api_tokens(is_active);
 
--- 5. Insert a sample API token for testing (you can change this)
+-- 5. Create admin_settings table for login credentials
+CREATE TABLE admin_settings (
+    id BIGSERIAL PRIMARY KEY,
+    admin_id TEXT NOT NULL UNIQUE,
+    admin_password TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- 6. Insert default admin credentials
+INSERT INTO admin_settings (admin_id, admin_password) 
+VALUES ('admin', 'admin123') 
+ON CONFLICT (admin_id) DO NOTHING;
+
+-- 7. Insert a sample API token for testing (you can change this)
 INSERT INTO api_tokens (token_name, token_value, is_active) 
 VALUES ('Bot Token', 'moviezone_bot_token_2025_secure', true);
 
--- 6. Optional: Insert some sample data for testing
+-- 8. Optional: Insert some sample data for testing
 INSERT INTO movie_links (movie_name, original_link, short_id, views, ads_enabled) VALUES
 ('Sample Movie 1', 'https://example.com/movie1', 'abc123', 0, true),
 ('Sample Movie 2', 'https://example.com/movie2', 'def456', 5, true),
 ('Admin Created Movie', 'https://example.com/movie3', 'ghi789', 2, false);
 
--- 7. Enable Row Level Security (RLS) - Optional but recommended
+-- 9. Enable Row Level Security (RLS) - Optional but recommended
 ALTER TABLE movie_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
 
 -- 8. Create policies for public access to movie_links (for redirect functionality)
 CREATE POLICY "Allow public read access to movie_links" ON movie_links
@@ -63,13 +77,23 @@ CREATE POLICY "Allow public delete from movie_links" ON movie_links
 CREATE POLICY "Allow read access to active api_tokens" ON api_tokens
     FOR SELECT USING (is_active = true);
 
--- 10. Grant necessary permissions for public access
+-- 10. Create policies for admin_settings (restricted access)
+CREATE POLICY "Allow read access to admin_settings" ON admin_settings
+    FOR SELECT USING (true);
+
+-- 11. Grant necessary permissions for public access
 GRANT ALL ON movie_links TO anon;
 GRANT ALL ON movie_links TO authenticated;
+GRANT ALL ON api_tokens TO anon;
 GRANT ALL ON api_tokens TO authenticated;
+GRANT ALL ON admin_settings TO anon;
+GRANT ALL ON admin_settings TO authenticated;
 GRANT USAGE ON SEQUENCE movie_links_id_seq TO anon;
 GRANT USAGE ON SEQUENCE movie_links_id_seq TO authenticated;
+GRANT USAGE ON SEQUENCE api_tokens_id_seq TO anon;
 GRANT USAGE ON SEQUENCE api_tokens_id_seq TO authenticated;
+GRANT USAGE ON SEQUENCE admin_settings_id_seq TO anon;
+GRANT USAGE ON SEQUENCE admin_settings_id_seq TO authenticated;
 
 -- 11. Optional: Create a function to automatically update views
 CREATE OR REPLACE FUNCTION increment_movie_views(short_id_param TEXT)

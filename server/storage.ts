@@ -1,4 +1,4 @@
-import { movieLinks, apiTokens, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken } from "@shared/schema";
+import { movieLinks, apiTokens, adminSettings, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings } from "@shared/schema";
 
 // Storage interface for movie links and API tokens
 export interface IStorage {
@@ -16,9 +16,14 @@ export interface IStorage {
   updateTokenLastUsed(tokenValue: string): Promise<void>;
   updateApiTokenStatus(id: number, isActive: boolean): Promise<ApiToken>;
   deactivateApiToken(id: number): Promise<void>;
+  
+  // Admin Settings methods
+  getAdminSettings(): Promise<AdminSettings | undefined>;
+  updateAdminCredentials(adminId: string, adminPassword: string): Promise<AdminSettings>;
 }
 
-export class MemStorage implements IStorage {
+// Memory storage removed - using only Supabase storage
+export class DeprecatedMemStorage implements IStorage {
   private movieLinks: Map<number, MovieLink>;
   private apiTokens: Map<number, ApiToken>;
   private currentId: number;
@@ -128,6 +133,15 @@ export class MemStorage implements IStorage {
       token.isActive = false;
       this.apiTokens.set(id, token);
     }
+  }
+
+  async getAdminSettings(): Promise<AdminSettings | undefined> {
+    // Memory storage doesn't support admin settings
+    return undefined;
+  }
+
+  async updateAdminCredentials(adminId: string, adminPassword: string): Promise<AdminSettings> {
+    throw new Error("Memory storage doesn't support admin credentials update");
   }
 }
 
@@ -261,10 +275,34 @@ export class DatabaseStorage implements IStorage {
       { is_active: isActive }, 
       { id }
     );
-    if (!result) {
+    if (!result || result.length === 0) {
       throw new Error("API token not found");
     }
-    return result;
+    return result[0];
+  }
+
+  async getAdminSettings(): Promise<AdminSettings | undefined> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.select('admin_settings');
+    return result[0];
+  }
+
+  async updateAdminCredentials(adminId: string, adminPassword: string): Promise<AdminSettings> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.update('admin_settings', 
+      { admin_id: adminId, admin_password: adminPassword, updated_at: new Date().toISOString() }, 
+      { id: 1 }
+    );
+    if (!result || result.length === 0) {
+      throw new Error("Admin settings not found");
+    }
+    return result[0];
   }
 
   async deactivateApiToken(id: number): Promise<void> {
@@ -279,4 +317,5 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
+// Remove local memory storage and use only Supabase storage
 export const storage = new DatabaseStorage();

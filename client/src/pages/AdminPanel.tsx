@@ -40,6 +40,10 @@ const AdminPanel = () => {
   const [generatedToken, setGeneratedToken] = useState("");
   const [editingToken, setEditingToken] = useState<any | null>(null);
   const [isEditTokenDialogOpen, setIsEditTokenDialogOpen] = useState(false);
+  
+  // Admin Settings states
+  const [newAdminId, setNewAdminId] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
 
   useEffect(() => {
     // Check if user is logged in
@@ -155,6 +159,24 @@ const AdminPanel = () => {
     },
   });
 
+  // Update admin credentials mutation
+  const updateAdminMutation = useMutation({
+    mutationFn: async (data: { adminId: string; adminPassword: string }) => {
+      return apiRequest("/api/admin-config", {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      setNewAdminId("");
+      setNewAdminPassword("");
+      toast({
+        title: "Credentials Updated",
+        description: "Admin credentials updated successfully.",
+      });
+    },
+  });
+
   const generateShortId = () => {
     return Math.random().toString(36).substring(2, 8);
   };
@@ -225,6 +247,30 @@ const AdminPanel = () => {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  const handleUpdateAdminCredentials = async () => {
+    if (!newAdminId.trim() || !newAdminPassword.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter both admin ID and password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await updateAdminMutation.mutateAsync({
+        adminId: newAdminId.trim(),
+        adminPassword: newAdminPassword.trim(),
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update admin credentials",
+        variant: "destructive",
+      });
     }
   };
 
@@ -406,10 +452,11 @@ const AdminPanel = () => {
 
       <div className="max-w-6xl mx-auto p-4">
         <Tabs defaultValue="home" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6">
+          <TabsList className="grid w-full grid-cols-4 mb-6">
             <TabsTrigger value="home">Home</TabsTrigger>
             <TabsTrigger value="database">Database</TabsTrigger>
             <TabsTrigger value="tokens">API Tokens</TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="home" className="space-y-6">
@@ -809,6 +856,53 @@ const AdminPanel = () => {
 }`}
                     </pre>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="space-y-6">
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-lg font-semibold mb-4">Admin Credentials</h3>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="newAdminId">New Admin ID</Label>
+                    <Input
+                      id="newAdminId"
+                      type="text"
+                      value={newAdminId}
+                      onChange={(e) => setNewAdminId(e.target.value)}
+                      placeholder="Enter new admin ID"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="newAdminPassword">New Admin Password</Label>
+                    <Input
+                      id="newAdminPassword"
+                      type="password"
+                      value={newAdminPassword}
+                      onChange={(e) => setNewAdminPassword(e.target.value)}
+                      placeholder="Enter new admin password"
+                    />
+                  </div>
+                  <Button
+                    onClick={handleUpdateAdminCredentials}
+                    disabled={updateAdminMutation.isPending}
+                    className="w-full"
+                  >
+                    {updateAdminMutation.isPending ? "Updating..." : "Update Credentials"}
+                  </Button>
+                </div>
+                <div className="mt-6 p-4 bg-muted rounded-lg">
+                  <h4 className="font-medium mb-2">Important Notes:</h4>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• Credentials are stored securely in Supabase database</li>
+                    <li>• Changes take effect immediately across all admin sessions</li>
+                    <li>• Make sure to remember your new credentials</li>
+                    <li>• Use strong passwords for better security</li>
+                  </ul>
                 </div>
               </CardContent>
             </Card>

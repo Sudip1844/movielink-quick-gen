@@ -50,18 +50,49 @@ function generateShortId(): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // Admin configuration endpoint
+  // Admin configuration endpoint - get from Supabase
   app.get("/api/admin-config", async (req, res) => {
     try {
-      const adminId = process.env.ADMIN_ID || envConfig.ADMIN_ID || "sbiswas1844";
-      const adminPassword = process.env.ADMIN_PASSWORD || envConfig.ADMIN_PASSWORD || "sudip@184455";
-      
+      const adminSettings = await storage.getAdminSettings();
+      if (!adminSettings) {
+        // Fallback to environment variables if no Supabase settings
+        return res.json({
+          adminId: process.env.ADMIN_ID || envConfig.ADMIN_ID || "sbiswas1844",
+          adminPassword: process.env.ADMIN_PASSWORD || envConfig.ADMIN_PASSWORD || "sudip@184455"
+        });
+      }
       res.json({
-        adminId,
-        adminPassword
+        adminId: adminSettings.adminId,
+        adminPassword: adminSettings.adminPassword
       });
     } catch (error) {
-      res.status(500).json({ error: "Failed to load admin configuration" });
+      console.error("Error fetching admin config:", error);
+      // Fallback to environment variables on error
+      res.json({
+        adminId: process.env.ADMIN_ID || envConfig.ADMIN_ID || "sbiswas1844",
+        adminPassword: process.env.ADMIN_PASSWORD || envConfig.ADMIN_PASSWORD || "sudip@184455"
+      });
+    }
+  });
+
+  // Update admin credentials
+  app.patch("/api/admin-config", async (req, res) => {
+    try {
+      const { adminId, adminPassword } = req.body;
+      
+      if (!adminId || !adminPassword) {
+        return res.status(400).json({ error: "Admin ID and password are required" });
+      }
+      
+      const updatedSettings = await storage.updateAdminCredentials(adminId, adminPassword);
+      res.json({
+        adminId: updatedSettings.adminId,
+        adminPassword: updatedSettings.adminPassword,
+        updatedAt: updatedSettings.updatedAt
+      });
+    } catch (error) {
+      console.error("Error updating admin config:", error);
+      res.status(500).json({ error: "Failed to update admin configuration" });
     }
   });
   
