@@ -42,7 +42,7 @@ CREATE TABLE admin_settings (
 
 -- 6. Insert default admin credentials
 INSERT INTO admin_settings (admin_id, admin_password) 
-VALUES ('admin', 'admin123') 
+VALUES ('sudip1844', 'save@184455') 
 ON CONFLICT (admin_id) DO NOTHING;
 
 -- 7. Insert a sample API token for testing (you can change this)
