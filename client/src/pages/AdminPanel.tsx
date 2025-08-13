@@ -139,6 +139,10 @@ const AdminPanel = () => {
         title: "Token Updated",
         description: "API token status updated successfully.",
       });
+      // Force refresh tokens data
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/tokens"] });
+      }, 100);
     },
   });
 
@@ -761,19 +765,19 @@ const AdminPanel = () => {
                                   size="sm"
                                   onClick={() => handleEditToken(token)}
                                   disabled={updateTokenMutation.isPending}
+                                  title="Edit Token Status"
                                 >
                                   <Edit className="w-4 h-4" />
                                 </Button>
-                                {!token.is_active && (
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => handleDeleteToken(token.id)}
-                                    disabled={deleteTokenMutation.isPending}
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                )}
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleDeleteToken(token.id)}
+                                  disabled={deleteTokenMutation.isPending}
+                                  title="Delete Token"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
