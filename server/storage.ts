@@ -271,14 +271,29 @@ export class DatabaseStorage implements IStorage {
       const { supabase } = await import('./supabase-client');
       this.supabaseClient = supabase;
     }
-    const result = await this.supabaseClient.update('api_tokens', 
-      { is_active: isActive }, 
-      { id }
-    );
-    if (!result || result.length === 0) {
-      throw new Error("API token not found");
+    
+    try {
+      console.log(`Updating API token ${id} to active: ${isActive}`);
+      const result = await this.supabaseClient.update('api_tokens', 
+        { is_active: isActive }, 
+        { id }
+      );
+      console.log('Update result:', result);
+      
+      // If result is null or undefined, fetch the updated token
+      if (!result) {
+        const tokens = await this.supabaseClient.select('api_tokens', '*', { id });
+        if (tokens && tokens.length > 0) {
+          return tokens[0];
+        }
+        throw new Error("API token not found after update");
+      }
+      
+      return Array.isArray(result) ? result[0] : result;
+    } catch (error) {
+      console.error('Error updating API token status:', error);
+      throw error;
     }
-    return result[0];
   }
 
   async getAdminSettings(): Promise<AdminSettings | undefined> {

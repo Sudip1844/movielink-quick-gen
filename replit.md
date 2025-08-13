@@ -67,6 +67,11 @@ A movie link shortening service that allows admins to create short links for mov
     - Verified all existing Supabase data loads correctly (3 sample movie links confirmed)
     - Enhanced error handling and debugging for admin settings retrieval
     - Project now runs cleanly in Replit with proper client/server separation and security practices
+    - **Final Security Enhancements (2025-08-13)**: Completed admin panel security improvements
+      - Removed admin credentials update functionality from Settings tab (now Supabase-only)
+      - Fixed API token status toggle bug in DatabaseStorage class
+      - Settings tab now displays informational message about Supabase credential management
+      - All admin credential changes must be done directly in Supabase dashboard for enhanced security
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management

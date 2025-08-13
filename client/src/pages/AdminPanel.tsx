@@ -41,9 +41,7 @@ const AdminPanel = () => {
   const [editingToken, setEditingToken] = useState<any | null>(null);
   const [isEditTokenDialogOpen, setIsEditTokenDialogOpen] = useState(false);
   
-  // Admin Settings states
-  const [newAdminId, setNewAdminId] = useState("");
-  const [newAdminPassword, setNewAdminPassword] = useState("");
+  // Admin Settings states removed - credentials now managed only via Supabase
 
   useEffect(() => {
     // Check if user is logged in
@@ -159,23 +157,7 @@ const AdminPanel = () => {
     },
   });
 
-  // Update admin credentials mutation
-  const updateAdminMutation = useMutation({
-    mutationFn: async (data: { adminId: string; adminPassword: string }) => {
-      return apiRequest("/api/admin-config", {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
-    },
-    onSuccess: () => {
-      setNewAdminId("");
-      setNewAdminPassword("");
-      toast({
-        title: "Credentials Updated",
-        description: "Admin credentials updated successfully.",
-      });
-    },
-  });
+  // Admin credentials mutation removed - now managed only via Supabase
 
   const generateShortId = () => {
     return Math.random().toString(36).substring(2, 8);
@@ -250,29 +232,7 @@ const AdminPanel = () => {
     }
   };
 
-  const handleUpdateAdminCredentials = async () => {
-    if (!newAdminId.trim() || !newAdminPassword.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter both admin ID and password",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    try {
-      await updateAdminMutation.mutateAsync({
-        adminId: newAdminId.trim(),
-        adminPassword: newAdminPassword.trim(),
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update admin credentials",
-        variant: "destructive",
-      });
-    }
-  };
+  // Admin credentials update removed - now managed only via Supabase database
 
   const handleGenerateLink = async () => {
     if (!movieName.trim() || !originalLink.trim()) {
@@ -865,44 +825,24 @@ const AdminPanel = () => {
           <TabsContent value="settings" className="space-y-6">
             <Card>
               <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-4">Admin Credentials</h3>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="newAdminId">New Admin ID</Label>
-                    <Input
-                      id="newAdminId"
-                      type="text"
-                      value={newAdminId}
-                      onChange={(e) => setNewAdminId(e.target.value)}
-                      placeholder="Enter new admin ID"
-                    />
+                <h3 className="text-lg font-semibold mb-4">System Settings</h3>
+                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <h4 className="font-medium mb-3 text-blue-800 dark:text-blue-200">Admin Credentials Management</h4>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                    Admin login credentials are now managed exclusively through Supabase for enhanced security.
+                  </p>
+                  <div className="text-sm text-blue-600 dark:text-blue-400 space-y-2">
+                    <p><strong>To update admin credentials:</strong></p>
+                    <ol className="list-decimal list-inside space-y-1 ml-4">
+                      <li>Go to your Supabase dashboard</li>
+                      <li>Navigate to Table Editor → admin_settings</li>
+                      <li>Edit the admin_id and admin_password fields</li>
+                      <li>Changes will take effect immediately</li>
+                    </ol>
+                    <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded border">
+                      <p className="text-xs"><strong>Current Setup:</strong> All login data is secured in Supabase database</p>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="newAdminPassword">New Admin Password</Label>
-                    <Input
-                      id="newAdminPassword"
-                      type="password"
-                      value={newAdminPassword}
-                      onChange={(e) => setNewAdminPassword(e.target.value)}
-                      placeholder="Enter new admin password"
-                    />
-                  </div>
-                  <Button
-                    onClick={handleUpdateAdminCredentials}
-                    disabled={updateAdminMutation.isPending}
-                    className="w-full"
-                  >
-                    {updateAdminMutation.isPending ? "Updating..." : "Update Credentials"}
-                  </Button>
-                </div>
-                <div className="mt-6 p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Important Notes:</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Credentials are stored securely in Supabase database</li>
-                    <li>• Changes take effect immediately across all admin sessions</li>
-                    <li>• Make sure to remember your new credentials</li>
-                    <li>• Use strong passwords for better security</li>
-                  </ul>
                 </div>
               </CardContent>
             </Card>
