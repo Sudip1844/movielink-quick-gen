@@ -6,11 +6,11 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://ztorzqnvzxbptmdmaqyi.supabase.co";
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0b3J6cW52enhicHRtZG1hcXlpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQ5MjYxMjYsImV4cCI6MjA3MDUwMjEyNn0.ZTLe9cFaqRGhXnBbm9wxaYCyGS-fg7jXZEmzXK-EYns";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0b3J6cW52enhicHRtZG1hcXlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDkyNjEyNiwiZXhwIjoyMDcwNTAyMTI2fQ.hcYnrfc1A4qdHj2ERRqZ615hqmD0Med6xdPAb2s5Yb0";
 
 const headers = {
-  'apikey': SUPABASE_ANON_KEY,
-  'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+  'apikey': SUPABASE_SERVICE_ROLE_KEY,
+  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
   'Content-Type': 'application/json',
   'Prefer': 'return=representation'
 };
