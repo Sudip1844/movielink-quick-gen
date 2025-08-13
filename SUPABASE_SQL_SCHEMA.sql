@@ -73,9 +73,18 @@ CREATE POLICY "Allow public insert to movie_links" ON movie_links
 CREATE POLICY "Allow public delete from movie_links" ON movie_links
     FOR DELETE USING (true);
 
--- 9. Create policies for api_tokens (restrict access)
-CREATE POLICY "Allow read access to active api_tokens" ON api_tokens
-    FOR SELECT USING (is_active = true);
+-- 9. Create policies for api_tokens (allow all operations for admin)
+CREATE POLICY "Allow read access to api_tokens" ON api_tokens
+    FOR SELECT USING (true);
+
+CREATE POLICY "Allow insert access to api_tokens" ON api_tokens
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow update access to api_tokens" ON api_tokens
+    FOR UPDATE USING (true);
+
+CREATE POLICY "Allow delete access to api_tokens" ON api_tokens
+    FOR DELETE USING (true);
 
 -- 10. Create policies for admin_settings (restricted access)
 CREATE POLICY "Allow read access to admin_settings" ON admin_settings

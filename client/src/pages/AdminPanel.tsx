@@ -113,7 +113,7 @@ const AdminPanel = () => {
     },
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tokens"] });
-      setGeneratedToken(data.token_value || data.tokenValue || "");
+      setGeneratedToken(data.tokenValue || data.token_value || "");
       setIsTokenDialogOpen(true);
       setTokenName("");
       toast({
@@ -739,22 +739,22 @@ const AdminPanel = () => {
                       <TableBody>
                         {(apiTokens as any[]).map((token) => (
                           <TableRow key={token.id}>
-                            <TableCell className="font-medium">{token.token_name}</TableCell>
+                            <TableCell className="font-medium">{token.tokenName || token.token_name}</TableCell>
                             <TableCell>
                               <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs ${
-                                token.is_active 
+                                (token.isActive ?? token.is_active)
                                   ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
                                   : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
                               }`}>
-                                {token.is_active ? "Active" : "Inactive"}
+                                {(token.isActive ?? token.is_active) ? "Active" : "Inactive"}
                               </span>
                             </TableCell>
                             <TableCell>
-                              {new Date(token.created_at).toLocaleDateString()}
+                              {new Date(token.createdAt || token.created_at).toLocaleDateString()}
                             </TableCell>
                             <TableCell>
-                              {token.last_used 
-                                ? new Date(token.last_used).toLocaleDateString()
+                              {(token.lastUsed || token.last_used)
+                                ? new Date(token.lastUsed || token.last_used).toLocaleDateString()
                                 : "Never"
                               }
                             </TableCell>
@@ -841,16 +841,17 @@ const AdminPanel = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Token Name</Label>
-                <Input value={editingToken?.token_name || ""} readOnly />
+                <Input value={editingToken?.tokenName || editingToken?.token_name || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label>Token Value</Label>
                 <div className="flex gap-2">
-                  <Input value={editingToken?.token_value || ""} readOnly />
+                  <Input value={editingToken?.tokenValue || editingToken?.token_value || ""} readOnly />
                   <Button 
                     onClick={() => {
-                      if (editingToken?.token_value) {
-                        navigator.clipboard.writeText(editingToken.token_value);
+                      const tokenValue = editingToken?.tokenValue || editingToken?.token_value;
+                      if (tokenValue) {
+                        navigator.clipboard.writeText(tokenValue);
                         toast({
                           title: "Copied",
                           description: "Token copied to clipboard!",
@@ -867,11 +868,11 @@ const AdminPanel = () => {
                 <Label>Status</Label>
                 <div className="flex items-center space-x-2">
                   <Switch
-                    checked={editingToken?.is_active || false}
+                    checked={editingToken?.isActive ?? editingToken?.is_active ?? false}
                     onCheckedChange={handleUpdateTokenStatus}
                     disabled={updateTokenMutation.isPending}
                   />
-                  <Label>{editingToken?.is_active ? "Active" : "Inactive"}</Label>
+                  <Label>{(editingToken?.isActive ?? editingToken?.is_active) ? "Active" : "Inactive"}</Label>
                 </div>
               </div>
               <div className="flex gap-2 justify-end">

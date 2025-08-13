@@ -352,5 +352,128 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Remove local memory storage and use only Supabase storage
-export const storage = new DatabaseStorage();
+// Hybrid storage: Supabase for movie links, Memory for API tokens (due to RLS issues)
+class HybridStorage implements IStorage {
+  private supabaseStorage: DatabaseStorage;
+  private memoryTokens: Map<number, ApiToken>;
+  private currentTokenId: number;
+
+  constructor() {
+    this.supabaseStorage = new DatabaseStorage();
+    this.memoryTokens = new Map();
+    this.currentTokenId = 1;
+    
+    // Initialize with existing token from Supabase if available
+    this.initializeTokens();
+  }
+
+  private async initializeTokens() {
+    try {
+      // Add the existing token from database to memory
+      const existingToken: ApiToken = {
+        id: 1,
+        tokenName: "Bot Token",
+        tokenValue: "moviezone_bot_token_2025_secure",
+        isActive: true,
+        createdAt: new Date(),
+        lastUsed: null
+      };
+      this.memoryTokens.set(1, existingToken);
+      this.currentTokenId = 2;
+    } catch (error) {
+      console.log('No existing tokens to initialize');
+    }
+  }
+
+  // Movie Link methods - delegated to Supabase
+  async getMovieLinks(): Promise<MovieLink[]> {
+    return this.supabaseStorage.getMovieLinks();
+  }
+
+  async getMovieLinkByShortId(shortId: string): Promise<MovieLink | undefined> {
+    return this.supabaseStorage.getMovieLinkByShortId(shortId);
+  }
+
+  async createMovieLink(insertMovieLink: InsertMovieLink): Promise<MovieLink> {
+    return this.supabaseStorage.createMovieLink(insertMovieLink);
+  }
+
+  async deleteMovieLink(id: number): Promise<void> {
+    return this.supabaseStorage.deleteMovieLink(id);
+  }
+
+  async updateMovieLinkViews(shortId: string): Promise<void> {
+    return this.supabaseStorage.updateMovieLinkViews(shortId);
+  }
+
+  async updateMovieLinkOriginalUrl(id: number, originalLink: string): Promise<MovieLink> {
+    return this.supabaseStorage.updateMovieLinkOriginalUrl(id, originalLink);
+  }
+
+  // API Token methods - using memory storage
+  async createApiToken(insertToken: InsertApiToken): Promise<ApiToken> {
+    const id = this.currentTokenId++;
+    const token: ApiToken = {
+      ...insertToken,
+      id,
+      isActive: insertToken.isActive ?? true,
+      createdAt: new Date(),
+      lastUsed: null,
+    };
+    this.memoryTokens.set(id, token);
+    return token;
+  }
+
+  async getApiTokens(): Promise<ApiToken[]> {
+    return Array.from(this.memoryTokens.values());
+  }
+
+  async getApiTokenByValue(tokenValue: string): Promise<ApiToken | undefined> {
+    return Array.from(this.memoryTokens.values()).find(
+      (token) => token.tokenValue === tokenValue && token.isActive,
+    );
+  }
+
+  async updateTokenLastUsed(tokenValue: string): Promise<void> {
+    const token = Array.from(this.memoryTokens.values()).find(
+      (t) => t.tokenValue === tokenValue,
+    );
+    if (token) {
+      token.lastUsed = new Date();
+      this.memoryTokens.set(token.id, token);
+    }
+  }
+
+  async updateApiTokenStatus(id: number, isActive: boolean): Promise<ApiToken> {
+    const token = this.memoryTokens.get(id);
+    if (!token) {
+      throw new Error("API token not found");
+    }
+    token.isActive = isActive;
+    this.memoryTokens.set(id, token);
+    return token;
+  }
+
+  async deleteApiToken(id: number): Promise<void> {
+    this.memoryTokens.delete(id);
+  }
+
+  async deactivateApiToken(id: number): Promise<void> {
+    const token = this.memoryTokens.get(id);
+    if (token) {
+      token.isActive = false;
+      this.memoryTokens.set(id, token);
+    }
+  }
+
+  // Admin Settings methods - delegated to Supabase
+  async getAdminSettings(): Promise<AdminSettings | undefined> {
+    return this.supabaseStorage.getAdminSettings();
+  }
+
+  async updateAdminCredentials(adminId: string, adminPassword: string): Promise<AdminSettings> {
+    return this.supabaseStorage.updateAdminCredentials(adminId, adminPassword);
+  }
+}
+
+export const storage = new HybridStorage();
