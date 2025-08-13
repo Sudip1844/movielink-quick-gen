@@ -111,9 +111,10 @@ const AdminPanel = () => {
         body: JSON.stringify(data),
       });
     },
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/tokens"] });
-      setGeneratedToken(data.tokenValue);
+      setGeneratedToken(data.token_value || data.tokenValue || "");
+      setIsTokenDialogOpen(true);
       setTokenName("");
       toast({
         title: "Token Created",
@@ -178,7 +179,6 @@ const AdminPanel = () => {
       await createTokenMutation.mutateAsync({
         tokenName: tokenName.trim(),
       });
-      setIsTokenDialogOpen(true);
     } catch (error) {
       toast({
         title: "Error",
@@ -188,13 +188,7 @@ const AdminPanel = () => {
     }
   };
 
-  const handleCopyToken = () => {
-    navigator.clipboard.writeText(generatedToken);
-    toast({
-      title: "Copied",
-      description: "Token copied to clipboard!",
-    });
-  };
+
 
   const handleEditToken = (token: any) => {
     setEditingToken(token);
@@ -412,11 +406,10 @@ const AdminPanel = () => {
 
       <div className="max-w-6xl mx-auto p-4">
         <Tabs defaultValue="home" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 mb-6">
+          <TabsList className="grid w-full grid-cols-3 mb-6">
             <TabsTrigger value="home">Home</TabsTrigger>
             <TabsTrigger value="database">Database</TabsTrigger>
             <TabsTrigger value="tokens">API Tokens</TabsTrigger>
-            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
 
           <TabsContent value="home" className="space-y-6">
@@ -691,7 +684,18 @@ const AdminPanel = () => {
                   </p>
                   <div className="flex gap-2">
                     <Input value={generatedToken} readOnly />
-                    <Button onClick={handleCopyToken} size="icon">
+                    <Button 
+                      onClick={() => {
+                        if (generatedToken) {
+                          navigator.clipboard.writeText(generatedToken);
+                          toast({
+                            title: "Copied",
+                            description: "Token copied to clipboard!",
+                          });
+                        }
+                      }} 
+                      size="icon"
+                    >
                       <Copy className="w-4 h-4" />
                     </Button>
                   </div>
@@ -821,32 +825,7 @@ const AdminPanel = () => {
             </Card>
           </TabsContent>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="space-y-6">
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-semibold mb-4">System Settings</h3>
-                <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <h4 className="font-medium mb-3 text-blue-800 dark:text-blue-200">Admin Credentials Management</h4>
-                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                    Admin login credentials are now managed exclusively through Supabase for enhanced security.
-                  </p>
-                  <div className="text-sm text-blue-600 dark:text-blue-400 space-y-2">
-                    <p><strong>To update admin credentials:</strong></p>
-                    <ol className="list-decimal list-inside space-y-1 ml-4">
-                      <li>Go to your Supabase dashboard</li>
-                      <li>Navigate to Table Editor → admin_settings</li>
-                      <li>Edit the admin_id and admin_password fields</li>
-                      <li>Changes will take effect immediately</li>
-                    </ol>
-                    <div className="mt-4 p-3 bg-blue-100 dark:bg-blue-900/30 rounded border">
-                      <p className="text-xs"><strong>Current Setup:</strong> All login data is secured in Supabase database</p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+
         </Tabs>
 
         {/* Edit Token Dialog */}

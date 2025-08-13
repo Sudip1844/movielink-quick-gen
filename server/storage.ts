@@ -15,6 +15,7 @@ export interface IStorage {
   getApiTokenByValue(tokenValue: string): Promise<ApiToken | undefined>;
   updateTokenLastUsed(tokenValue: string): Promise<void>;
   updateApiTokenStatus(id: number, isActive: boolean): Promise<ApiToken>;
+  deleteApiToken(id: number): Promise<void>;
   deactivateApiToken(id: number): Promise<void>;
   
   // Admin Settings methods
@@ -125,6 +126,10 @@ export class DeprecatedMemStorage implements IStorage {
     token.isActive = isActive;
     this.apiTokens.set(id, token);
     return token;
+  }
+
+  async deleteApiToken(id: number): Promise<void> {
+    this.apiTokens.delete(id);
   }
 
   async deactivateApiToken(id: number): Promise<void> {
@@ -325,6 +330,14 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Admin settings not found");
     }
     return result[0];
+  }
+
+  async deleteApiToken(id: number): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    await this.supabaseClient.delete('api_tokens', { id });
   }
 
   async deactivateApiToken(id: number): Promise<void> {

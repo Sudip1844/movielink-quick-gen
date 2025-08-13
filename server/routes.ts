@@ -303,10 +303,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid token ID" });
       }
       
-      await storage.deactivateApiToken(id);
+      await storage.deleteApiToken(id);
       res.json({ success: true });
     } catch (error) {
-      res.status(500).json({ error: "Failed to deactivate token" });
+      console.error("Error deleting API token:", error);
+      res.status(500).json({ error: "Failed to delete token" });
     }
   });
 
