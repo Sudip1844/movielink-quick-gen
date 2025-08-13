@@ -50,27 +50,33 @@ function generateShortId(): string {
 
 export async function registerRoutes(app: Express): Promise<Server> {
   
-  // Admin configuration endpoint - get from Supabase
+  // Admin configuration endpoint - get from Supabase ONLY
   app.get("/api/admin-config", async (req, res) => {
     try {
+      console.log('Fetching admin config from API endpoint...');
       const adminSettings = await storage.getAdminSettings();
+      console.log('Admin settings response:', adminSettings);
+      
       if (!adminSettings) {
-        // Fallback to environment variables if no Supabase settings
-        return res.json({
-          adminId: process.env.ADMIN_ID || envConfig.ADMIN_ID || "sbiswas1844",
-          adminPassword: process.env.ADMIN_PASSWORD || envConfig.ADMIN_PASSWORD || "sudip@184455"
+        console.log('No admin settings found');
+        return res.status(404).json({ 
+          error: "Admin settings not found in database. Please check Supabase admin_settings table." 
         });
       }
-      res.json({
-        adminId: adminSettings.adminId,
-        adminPassword: adminSettings.adminPassword
-      });
+      
+      console.log('Admin settings found:', adminSettings);
+      // Handle both snake_case (Supabase) and camelCase field names
+      const response = {
+        adminId: (adminSettings as any).admin_id || (adminSettings as any).adminId,
+        adminPassword: (adminSettings as any).admin_password || (adminSettings as any).adminPassword
+      };
+      console.log('Sending response:', response);
+      
+      res.json(response);
     } catch (error) {
       console.error("Error fetching admin config:", error);
-      // Fallback to environment variables on error
-      res.json({
-        adminId: process.env.ADMIN_ID || envConfig.ADMIN_ID || "sbiswas1844",
-        adminPassword: process.env.ADMIN_PASSWORD || envConfig.ADMIN_PASSWORD || "sudip@184455"
+      res.status(500).json({ 
+        error: "Failed to fetch admin configuration from database" 
       });
     }
   });

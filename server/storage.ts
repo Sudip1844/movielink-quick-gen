@@ -286,8 +286,15 @@ export class DatabaseStorage implements IStorage {
       const { supabase } = await import('./supabase-client');
       this.supabaseClient = supabase;
     }
-    const result = await this.supabaseClient.select('admin_settings');
-    return result[0];
+    try {
+      console.log('Fetching admin settings from Supabase...');
+      const result = await this.supabaseClient.select('admin_settings');
+      console.log('Admin settings result:', result);
+      return result && result.length > 0 ? result[0] : undefined;
+    } catch (error) {
+      console.error('Error fetching admin settings:', error);
+      return undefined;
+    }
   }
 
   async updateAdminCredentials(adminId: string, adminPassword: string): Promise<AdminSettings> {
