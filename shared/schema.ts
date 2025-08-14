@@ -21,6 +21,18 @@ export const apiTokens = pgTable("api_tokens", {
   lastUsed: timestamp("last_used", { withTimezone: true }),
 });
 
+export const qualityMovieLinks = pgTable("quality_movie_links", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  movieName: text("movie_name").notNull(),
+  shortId: text("short_id").notNull().unique(),
+  quality480p: text("quality_480p"),
+  quality720p: text("quality_720p"),
+  quality1080p: text("quality_1080p"),
+  views: integer("views").notNull().default(0),
+  dateAdded: timestamp("date_added", { withTimezone: true }).notNull().defaultNow(),
+  adsEnabled: boolean("ads_enabled").notNull().default(true),
+});
+
 export const insertMovieLinkSchema = createInsertSchema(movieLinks).omit({
   id: true,
   views: true,
@@ -31,6 +43,12 @@ export const insertApiTokenSchema = createInsertSchema(apiTokens).omit({
   id: true,
   createdAt: true,
   lastUsed: true,
+});
+
+export const insertQualityMovieLinkSchema = createInsertSchema(qualityMovieLinks).omit({
+  id: true,
+  views: true,
+  dateAdded: true,
 });
 
 // API request schema for creating short links (universal)
@@ -60,3 +78,5 @@ export type ApiToken = typeof apiTokens.$inferSelect;
 export type CreateShortLinkRequest = z.infer<typeof createShortLinkSchema>;
 export type InsertAdminSettings = z.infer<typeof insertAdminSettingsSchema>;
 export type AdminSettings = typeof adminSettings.$inferSelect;
+export type InsertQualityMovieLink = z.infer<typeof insertQualityMovieLinkSchema>;
+export type QualityMovieLink = typeof qualityMovieLinks.$inferSelect;

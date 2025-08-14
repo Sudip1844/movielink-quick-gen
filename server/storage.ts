@@ -1,4 +1,4 @@
-import { movieLinks, apiTokens, adminSettings, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings } from "@shared/schema";
+import { movieLinks, apiTokens, adminSettings, qualityMovieLinks, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings, type QualityMovieLink, type InsertQualityMovieLink } from "@shared/schema";
 
 // Storage interface for movie links and API tokens
 export interface IStorage {
@@ -21,20 +21,32 @@ export interface IStorage {
   // Admin Settings methods
   getAdminSettings(): Promise<AdminSettings | undefined>;
   updateAdminCredentials(adminId: string, adminPassword: string): Promise<AdminSettings>;
+  
+  // Quality Movie Links methods
+  createQualityMovieLink(movieLink: InsertQualityMovieLink): Promise<QualityMovieLink>;
+  getQualityMovieLinks(): Promise<QualityMovieLink[]>;
+  getQualityMovieLinkByShortId(shortId: string): Promise<QualityMovieLink | undefined>;
+  updateQualityMovieLinkViews(shortId: string): Promise<void>;
+  updateQualityMovieLink(id: number, updates: Partial<InsertQualityMovieLink>): Promise<QualityMovieLink>;
+  deleteQualityMovieLink(id: number): Promise<void>;
 }
 
 // Memory storage removed - using only Supabase storage
 export class DeprecatedMemStorage implements IStorage {
   private movieLinks: Map<number, MovieLink>;
   private apiTokens: Map<number, ApiToken>;
+  private qualityMovieLinks: Map<number, QualityMovieLink>;
   private currentId: number;
   private currentTokenId: number;
+  private currentQualityId: number;
 
   constructor() {
     this.movieLinks = new Map();
     this.apiTokens = new Map();
+    this.qualityMovieLinks = new Map();
     this.currentId = 1;
     this.currentTokenId = 1;
+    this.currentQualityId = 1;
   }
 
   async createMovieLink(insertMovieLink: InsertMovieLink): Promise<MovieLink> {
@@ -147,6 +159,57 @@ export class DeprecatedMemStorage implements IStorage {
 
   async updateAdminCredentials(adminId: string, adminPassword: string): Promise<AdminSettings> {
     throw new Error("Memory storage doesn't support admin credentials update");
+  }
+
+  // Quality Movie Links methods
+  async createQualityMovieLink(insertQualityMovieLink: InsertQualityMovieLink): Promise<QualityMovieLink> {
+    const id = this.currentQualityId++;
+    const qualityMovieLink: QualityMovieLink = {
+      ...insertQualityMovieLink,
+      id,
+      views: 0,
+      dateAdded: new Date(),
+      adsEnabled: insertQualityMovieLink.adsEnabled ?? true,
+      quality480p: insertQualityMovieLink.quality480p ?? null,
+      quality720p: insertQualityMovieLink.quality720p ?? null,
+      quality1080p: insertQualityMovieLink.quality1080p ?? null,
+    };
+    this.qualityMovieLinks.set(id, qualityMovieLink);
+    return qualityMovieLink;
+  }
+
+  async getQualityMovieLinks(): Promise<QualityMovieLink[]> {
+    return Array.from(this.qualityMovieLinks.values());
+  }
+
+  async getQualityMovieLinkByShortId(shortId: string): Promise<QualityMovieLink | undefined> {
+    return Array.from(this.qualityMovieLinks.values()).find(
+      (link) => link.shortId === shortId,
+    );
+  }
+
+  async updateQualityMovieLinkViews(shortId: string): Promise<void> {
+    const link = Array.from(this.qualityMovieLinks.values()).find(
+      (link) => link.shortId === shortId,
+    );
+    if (link) {
+      link.views += 1;
+      this.qualityMovieLinks.set(link.id, link);
+    }
+  }
+
+  async updateQualityMovieLink(id: number, updates: Partial<InsertQualityMovieLink>): Promise<QualityMovieLink> {
+    const link = this.qualityMovieLinks.get(id);
+    if (!link) {
+      throw new Error("Quality movie link not found");
+    }
+    const updatedLink = { ...link, ...updates };
+    this.qualityMovieLinks.set(id, updatedLink);
+    return updatedLink;
+  }
+
+  async deleteQualityMovieLink(id: number): Promise<void> {
+    this.qualityMovieLinks.delete(id);
   }
 }
 
@@ -349,6 +412,81 @@ export class DatabaseStorage implements IStorage {
       { is_active: false }, 
       { id }
     );
+  }
+
+  // Quality Movie Links methods
+  async createQualityMovieLink(insertQualityMovieLink: InsertQualityMovieLink): Promise<QualityMovieLink> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.insert('quality_movie_links', {
+      movie_name: insertQualityMovieLink.movieName,
+      short_id: insertQualityMovieLink.shortId,
+      quality_480p: insertQualityMovieLink.quality480p || null,
+      quality_720p: insertQualityMovieLink.quality720p || null,
+      quality_1080p: insertQualityMovieLink.quality1080p || null,
+      ads_enabled: insertQualityMovieLink.adsEnabled ?? true,
+    });
+  }
+
+  async getQualityMovieLinks(): Promise<QualityMovieLink[]> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.select('quality_movie_links');
+  }
+
+  async getQualityMovieLinkByShortId(shortId: string): Promise<QualityMovieLink | undefined> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.select('quality_movie_links', '*', { short_id: shortId });
+    return result[0];
+  }
+
+  async updateQualityMovieLinkViews(shortId: string): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    // First get current views
+    const current = await this.supabaseClient.select('quality_movie_links', 'views', { short_id: shortId });
+    if (current[0]) {
+      const newViews = (current[0].views || 0) + 1;
+      await this.supabaseClient.update('quality_movie_links', { views: newViews }, { short_id: shortId });
+    }
+  }
+
+  async updateQualityMovieLink(id: number, updates: Partial<InsertQualityMovieLink>): Promise<QualityMovieLink> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    const updateData: any = {};
+    if (updates.movieName !== undefined) updateData.movie_name = updates.movieName;
+    if (updates.quality480p !== undefined) updateData.quality_480p = updates.quality480p;
+    if (updates.quality720p !== undefined) updateData.quality_720p = updates.quality720p;
+    if (updates.quality1080p !== undefined) updateData.quality_1080p = updates.quality1080p;
+    if (updates.adsEnabled !== undefined) updateData.ads_enabled = updates.adsEnabled;
+    
+    const result = await this.supabaseClient.update('quality_movie_links', updateData, { id });
+    if (!result) {
+      throw new Error("Quality movie link not found");
+    }
+    return result;
+  }
+
+  async deleteQualityMovieLink(id: number): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    await this.supabaseClient.delete('quality_movie_links', { id });
   }
 }
 

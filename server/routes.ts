@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMovieLinkSchema, createShortLinkSchema } from "@shared/schema";
+import { insertMovieLinkSchema, createShortLinkSchema, insertQualityMovieLinkSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -308,6 +308,91 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting API token:", error);
       res.status(500).json({ error: "Failed to delete token" });
+    }
+  });
+
+  // Quality Movie Links API routes (admin panel)
+  
+  // Get all quality movie links
+  app.get("/api/quality-movie-links", async (req, res) => {
+    try {
+      const links = await storage.getQualityMovieLinks();
+      res.json(links);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quality movie links" });
+    }
+  });
+
+  // Create a new quality movie link
+  app.post("/api/quality-movie-links", async (req, res) => {
+    try {
+      const result = insertQualityMovieLinkSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid data", details: result.error });
+      }
+      
+      const qualityMovieLink = await storage.createQualityMovieLink(result.data);
+      res.status(201).json(qualityMovieLink);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create quality movie link" });
+    }
+  });
+
+  // Get quality movie link by short ID
+  app.get("/api/quality-movie-links/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      const link = await storage.getQualityMovieLinkByShortId(shortId);
+      
+      if (!link) {
+        return res.status(404).json({ error: "Quality movie link not found" });
+      }
+      
+      res.json(link);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quality movie link" });
+    }
+  });
+
+  // Update quality movie link views
+  app.patch("/api/quality-movie-links/:shortId/views", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      await storage.updateQualityMovieLinkViews(shortId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update views" });
+    }
+  });
+
+  // Update quality movie link
+  app.patch("/api/quality-movie-links/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      const updates = req.body;
+      const updatedLink = await storage.updateQualityMovieLink(id, updates);
+      res.json(updatedLink);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update quality movie link" });
+    }
+  });
+
+  // Delete a quality movie link
+  app.delete("/api/quality-movie-links/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      await storage.deleteQualityMovieLink(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete quality movie link" });
     }
   });
 
