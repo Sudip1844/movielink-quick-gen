@@ -4,6 +4,7 @@
 -- 1. Drop existing tables if they exist (to avoid conflicts)
 DROP TABLE IF EXISTS movie_links CASCADE;
 DROP TABLE IF EXISTS api_tokens CASCADE;
+DROP TABLE IF EXISTS quality_movie_links CASCADE;
 
 -- 2. Create movie_links table with proper Supabase syntax
 CREATE TABLE movie_links (
@@ -16,7 +17,20 @@ CREATE TABLE movie_links (
     ads_enabled BOOLEAN NOT NULL DEFAULT true
 );
 
--- 3. Create api_tokens table for secure authentication
+-- 3. Create quality_movie_links table for multi-quality downloads
+CREATE TABLE quality_movie_links (
+    id BIGSERIAL PRIMARY KEY,
+    movie_name TEXT NOT NULL,
+    short_id TEXT NOT NULL UNIQUE,
+    quality_480p TEXT, -- URL for 480p quality (optional)
+    quality_720p TEXT, -- URL for 720p quality (optional)
+    quality_1080p TEXT, -- URL for 1080p quality (optional)
+    views INTEGER NOT NULL DEFAULT 0,
+    date_added TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    ads_enabled BOOLEAN NOT NULL DEFAULT true
+);
+
+-- 4. Create api_tokens table for secure authentication
 CREATE TABLE api_tokens (
     id BIGSERIAL PRIMARY KEY,
     token_name TEXT NOT NULL,
@@ -26,13 +40,15 @@ CREATE TABLE api_tokens (
     last_used TIMESTAMP WITH TIME ZONE
 );
 
--- 4. Create indexes for better performance
+-- 5. Create indexes for better performance
 CREATE INDEX idx_movie_links_short_id ON movie_links(short_id);
 CREATE INDEX idx_movie_links_date_added ON movie_links(date_added DESC);
+CREATE INDEX idx_quality_movie_links_short_id ON quality_movie_links(short_id);
+CREATE INDEX idx_quality_movie_links_date_added ON quality_movie_links(date_added DESC);
 CREATE INDEX idx_api_tokens_token_value ON api_tokens(token_value);
 CREATE INDEX idx_api_tokens_active ON api_tokens(is_active);
 
--- 5. Create admin_settings table for login credentials
+-- 6. Create admin_settings table for login credentials
 CREATE TABLE admin_settings (
     id BIGSERIAL PRIMARY KEY,
     admin_id TEXT NOT NULL UNIQUE,
@@ -40,27 +56,28 @@ CREATE TABLE admin_settings (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
--- 6. Insert default admin credentials
+-- 7. Insert default admin credentials
 INSERT INTO admin_settings (admin_id, admin_password) 
 VALUES ('sudip1844', 'save@184455') 
 ON CONFLICT (admin_id) DO NOTHING;
 
--- 7. Insert a sample API token for testing (you can change this)
+-- 8. Insert a sample API token for testing (you can change this)
 INSERT INTO api_tokens (token_name, token_value, is_active) 
 VALUES ('Bot Token', 'moviezone_bot_token_2025_secure', true);
 
--- 8. Optional: Insert some sample data for testing
+-- 9. Optional: Insert some sample data for testing
 INSERT INTO movie_links (movie_name, original_link, short_id, views, ads_enabled) VALUES
 ('Sample Movie 1', 'https://example.com/movie1', 'abc123', 0, true),
 ('Sample Movie 2', 'https://example.com/movie2', 'def456', 5, true),
 ('Admin Created Movie', 'https://example.com/movie3', 'ghi789', 2, false);
 
--- 9. Enable Row Level Security (RLS) - Optional but recommended
+-- 10. Enable Row Level Security (RLS) - Optional but recommended
 ALTER TABLE movie_links ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_movie_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
 
--- 8. Create policies for public access to movie_links (for redirect functionality)
+-- 11. Create policies for public access to movie_links (for redirect functionality)
 CREATE POLICY "Allow public read access to movie_links" ON movie_links
     FOR SELECT USING (true);
 
@@ -73,7 +90,20 @@ CREATE POLICY "Allow public insert to movie_links" ON movie_links
 CREATE POLICY "Allow public delete from movie_links" ON movie_links
     FOR DELETE USING (true);
 
--- 9. Create policies for api_tokens (allow all operations for admin)
+-- 12. Create policies for public access to quality_movie_links
+CREATE POLICY "Allow public read access to quality_movie_links" ON quality_movie_links
+    FOR SELECT USING (true);
+
+CREATE POLICY "Allow public update views on quality_movie_links" ON quality_movie_links
+    FOR UPDATE USING (true);
+
+CREATE POLICY "Allow public insert to quality_movie_links" ON quality_movie_links
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public delete from quality_movie_links" ON quality_movie_links
+    FOR DELETE USING (true);
+
+-- 13. Create policies for api_tokens (allow all operations for admin)
 CREATE POLICY "Allow read access to api_tokens" ON api_tokens
     FOR SELECT USING (true);
 
@@ -86,25 +116,29 @@ CREATE POLICY "Allow update access to api_tokens" ON api_tokens
 CREATE POLICY "Allow delete access to api_tokens" ON api_tokens
     FOR DELETE USING (true);
 
--- 10. Create policies for admin_settings (restricted access)
+-- 14. Create policies for admin_settings (restricted access)
 CREATE POLICY "Allow read access to admin_settings" ON admin_settings
     FOR SELECT USING (true);
 
--- 11. Grant necessary permissions for public access
+-- 15. Grant necessary permissions for public access
 GRANT ALL ON movie_links TO anon;
 GRANT ALL ON movie_links TO authenticated;
+GRANT ALL ON quality_movie_links TO anon;
+GRANT ALL ON quality_movie_links TO authenticated;
 GRANT ALL ON api_tokens TO anon;
 GRANT ALL ON api_tokens TO authenticated;
 GRANT ALL ON admin_settings TO anon;
 GRANT ALL ON admin_settings TO authenticated;
 GRANT USAGE ON SEQUENCE movie_links_id_seq TO anon;
 GRANT USAGE ON SEQUENCE movie_links_id_seq TO authenticated;
+GRANT USAGE ON SEQUENCE quality_movie_links_id_seq TO anon;
+GRANT USAGE ON SEQUENCE quality_movie_links_id_seq TO authenticated;
 GRANT USAGE ON SEQUENCE api_tokens_id_seq TO anon;
 GRANT USAGE ON SEQUENCE api_tokens_id_seq TO authenticated;
 GRANT USAGE ON SEQUENCE admin_settings_id_seq TO anon;
 GRANT USAGE ON SEQUENCE admin_settings_id_seq TO authenticated;
 
--- 11. Optional: Create a function to automatically update views
+-- 16. Optional: Create a function to automatically update views
 CREATE OR REPLACE FUNCTION increment_movie_views(short_id_param TEXT)
 RETURNS void 
 SECURITY DEFINER
@@ -117,7 +151,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 12. Optional: Create a function to generate random short IDs
+-- 17. Optional: Create a function to generate random short IDs
 CREATE OR REPLACE FUNCTION generate_short_id()
 RETURNS TEXT 
 SECURITY DEFINER
@@ -128,13 +162,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 13. Grant execute permissions on functions
+-- 18. Grant execute permissions on functions
 GRANT EXECUTE ON FUNCTION increment_movie_views(TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION increment_movie_views(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION generate_short_id() TO anon;
 GRANT EXECUTE ON FUNCTION generate_short_id() TO authenticated;
 
--- 14. Verify the tables were created successfully
+-- 19. Verify the tables were created successfully
 SELECT 'movie_links table created successfully' as status;
 
 -- End of SQL Schema
