@@ -472,14 +472,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { shortId } = req.params;
       
-      // First try to find in regular movie links
+      // Try to find the link in both single and quality movie links
       let movieLink = await storage.getMovieLinkByShortId(shortId);
-      let qualityMovieLink = null;
+      let qualityMovieLink = await storage.getQualityMovieLinkByShortId(shortId);
       let linkType = "single";
       
-      // If not found in regular movie links, try quality movie links
-      if (!movieLink) {
-        qualityMovieLink = await storage.getQualityMovieLinkByShortId(shortId);
+      // If not found in regular movie links, check quality movie links
+      if (!movieLink && qualityMovieLink) {
         linkType = "quality";
       }
       
@@ -502,9 +501,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (linkType === "quality" && qualityMovieLink) {
         linkData.qualityLinks = {
-          quality480p: (qualityMovieLink as any).quality480p || qualityMovieLink.quality480p,
-          quality720p: (qualityMovieLink as any).quality720p || qualityMovieLink.quality720p,
-          quality1080p: (qualityMovieLink as any).quality1080p || qualityMovieLink.quality1080p
+          quality480p: (qualityMovieLink as any).quality_480p || (qualityMovieLink as any).quality480p,
+          quality720p: (qualityMovieLink as any).quality_720p || (qualityMovieLink as any).quality720p,
+          quality1080p: (qualityMovieLink as any).quality_1080p || (qualityMovieLink as any).quality1080p
         };
       } else if (movieLink) {
         linkData.originalLink = (movieLink as any).original_link || movieLink.originalLink;
