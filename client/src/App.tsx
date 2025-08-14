@@ -18,6 +18,7 @@ const App = () => (
         <Switch>
           <Route path="/" component={Login} />
           <Route path="/admin" component={AdminPanel} />
+          <Route path="/redirect" component={RedirectPage} />
           <Route path="/m/:id" component={RedirectPage} />
           <Route component={NotFound} />
         </Switch>

@@ -484,38 +484,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!movieLink && !qualityMovieLink) {
-        // For expired/missing links, redirect to index with error parameter
-        return res.redirect("/?error=expired");
+        // For expired/missing links, redirect to redirect page with error parameter
+        return res.redirect("/redirect?error=expired");
       }
 
       const link = movieLink || qualityMovieLink;
       if (!link) {
-        return res.redirect("/?error=expired");
+        return res.redirect("/redirect?error=expired");
       }
 
       const linkData: any = {
-        movieName: link.movieName,
-        shortId: link.shortId,
-        adsEnabled: link.adsEnabled,
+        movieName: (link as any).movie_name || link.movieName,
+        shortId: (link as any).short_id || link.shortId,
+        adsEnabled: (link as any).ads_enabled || link.adsEnabled,
         linkType
       };
 
       if (linkType === "quality" && qualityMovieLink) {
         linkData.qualityLinks = {
-          quality480p: qualityMovieLink.quality480p,
-          quality720p: qualityMovieLink.quality720p,
-          quality1080p: qualityMovieLink.quality1080p
+          quality480p: (qualityMovieLink as any).quality480p || qualityMovieLink.quality480p,
+          quality720p: (qualityMovieLink as any).quality720p || qualityMovieLink.quality720p,
+          quality1080p: (qualityMovieLink as any).quality1080p || qualityMovieLink.quality1080p
         };
       } else if (movieLink) {
-        linkData.originalLink = movieLink.originalLink;
+        linkData.originalLink = (movieLink as any).original_link || movieLink.originalLink;
       }
 
       // Encode link data as URL parameter
       const encodedLinkData = encodeURIComponent(JSON.stringify(linkData));
-      res.redirect(`/?link=${encodedLinkData}`);
+      res.redirect(`/redirect?link=${encodedLinkData}`);
     } catch (error) {
       console.error("Error in redirect route:", error);
-      res.redirect("/?error=expired");
+      res.redirect("/redirect?error=expired");
     }
   });
 

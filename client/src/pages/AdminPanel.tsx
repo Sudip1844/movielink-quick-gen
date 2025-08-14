@@ -331,7 +331,7 @@ const AdminPanel = () => {
     const shortLink = `${window.location.origin}/m/${shortId}`;
     
     try {
-      const qualityLinks = {};
+      const qualityLinks: any = {};
       if (quality480p.trim()) qualityLinks.quality480p = quality480p.trim();
       if (quality720p.trim()) qualityLinks.quality720p = quality720p.trim();
       if (quality1080p.trim()) qualityLinks.quality1080p = quality1080p.trim();
@@ -675,7 +675,7 @@ const AdminPanel = () => {
                 ) : (
                   <div className="space-y-3">
                     {recentLinks.map((link) => (
-                      <div key={`${link.quality480p ? 'quality' : 'single'}-${link.id}`} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div key={`${link.quality480p || link.quality720p || link.quality1080p ? 'quality' : 'single'}-${link.id}`} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-medium truncate">{link.movie_name}</p>
