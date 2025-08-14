@@ -1,25 +1,19 @@
 import { useState, useEffect, useRef } from "react";
-import { useRoute } from "wouter";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 
 const RedirectPage = () => {
-  const [match, params] = useRoute("/m/:id");
+  const [location] = useLocation();
   const [countdown, setCountdown] = useState(10); // Changed to 10 seconds
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showContinueSection, setShowContinueSection] = useState(false);
+  const [movieData, setMovieData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const viewsUpdated = useRef(false); // Prevent multiple view updates
 
-  const id = params?.id;
-
-  // Fetch movie link from API
-  const { data: movieLink, isLoading } = useQuery({
-    queryKey: ["/api/movie-links/", id],
-    enabled: !!id,
-  }) as { data: any, isLoading: boolean };
-
-  // Update views mutation
-  const updateViewsMutation = useMutation({
+  // Update views mutations for both link types
+  const updateSingleViewsMutation = useMutation({
     mutationFn: async (shortId: string) => {
       return apiRequest(`/api/movie-links/${shortId}/views`, {
         method: "PATCH",
@@ -27,23 +21,63 @@ const RedirectPage = () => {
     },
   });
 
-  useEffect(() => {
-    if (movieLink && !viewsUpdated.current) {
-      // Update view count only once when component loads
-      viewsUpdated.current = true;
-      updateViewsMutation.mutate(movieLink.shortId);
+  const updateQualityViewsMutation = useMutation({
+    mutationFn: async (shortId: string) => {
+      return apiRequest(`/api/quality-movie-links/${shortId}/views`, {
+        method: "PATCH",
+      });
+    },
+  });
 
-      // If ads are disabled, redirect immediately
-      if (!movieLink.adsEnabled) {
-        window.location.href = movieLink.originalLink;
-        return;
+  useEffect(() => {
+    // Parse URL parameters to get movie data
+    const urlParams = new URLSearchParams(window.location.search);
+    const linkData = urlParams.get('link');
+    const error = urlParams.get('error');
+
+    if (error === 'expired') {
+      setMovieData(null);
+      setIsLoading(false);
+      return;
+    }
+
+    if (linkData) {
+      try {
+        const parsedData = JSON.parse(decodeURIComponent(linkData));
+        setMovieData(parsedData);
+        
+        // Update view count only once when component loads
+        if (!viewsUpdated.current) {
+          viewsUpdated.current = true;
+          if (parsedData.linkType === "quality") {
+            updateQualityViewsMutation.mutate(parsedData.shortId);
+          } else {
+            updateSingleViewsMutation.mutate(parsedData.shortId);
+          }
+
+          // If ads are disabled, redirect immediately
+          if (!parsedData.adsEnabled) {
+            if (parsedData.linkType === "quality") {
+              // For quality links without ads, redirect to a no-ads version
+              setIsLoading(false);
+              return;
+            } else {
+              window.location.href = parsedData.originalLink;
+              return;
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error parsing link data:", error);
+        setMovieData(null);
       }
     }
-  }, [movieLink]);
+    setIsLoading(false);
+  }, [location]);
 
   // Timer countdown effect
   useEffect(() => {
-    if (!movieLink?.adsEnabled) return;
+    if (!movieData?.adsEnabled) return;
 
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
@@ -53,12 +87,10 @@ const RedirectPage = () => {
       setShowScrollButton(true);
       setShowContinueSection(true);
     }
-  }, [countdown, movieLink?.adsEnabled]);
+  }, [countdown, movieData?.adsEnabled]);
 
-  const handleContinue = () => {
-    if (movieLink) {
-      window.location.href = movieLink.originalLink;
-    }
+  const handleContinue = (link: string) => {
+    window.location.href = link;
   };
 
   const scrollToBottom = () => {
@@ -81,7 +113,7 @@ const RedirectPage = () => {
     );
   }
 
-  if (!movieLink) {
+  if (!movieData) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)' }}>
@@ -92,18 +124,57 @@ const RedirectPage = () => {
     );
   }
 
-  // If ads are disabled, show loading message while redirecting
-  if (!movieLink.adsEnabled) {
-    return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
-        <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)' }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: '15px', color: '#333' }}>Redirecting...</h1>
-          <p style={{ color: '#666', fontSize: '1.1rem' }}>
-            You will be redirected to {movieLink.movieName} shortly.
-          </p>
+  // If ads are disabled, show quality selection page or redirect immediately
+  if (!movieData.adsEnabled) {
+    if (movieData.linkType === "quality") {
+      // Show no-ads quality selection page
+      const availableQualities = Object.entries(movieData.qualityLinks || {})
+        .filter(([_, url]) => url)
+        .map(([quality, url]) => ({ quality: quality.replace('quality', '').replace('p', 'p'), url: url as string }));
+
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)', maxWidth: '500px' }}>
+            <h1 style={{ fontSize: '1.8rem', marginBottom: '20px', color: '#333' }}>{movieData.movieName}</h1>
+            <p style={{ color: '#666', fontSize: '1rem', marginBottom: '30px' }}>Select quality to download:</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {availableQualities.map(({ quality, url }, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleContinue(url)}
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '15px 30px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    transition: 'transform 0.3s ease'
+                  }}
+                  onMouseEnter={(e) => (e.target as HTMLElement).style.transform = 'scale(1.05)'}
+                  onMouseLeave={(e) => (e.target as HTMLElement).style.transform = 'scale(1)'}
+                >
+                  Continue ({quality})
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
-    );
+      );
+    } else {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)' }}>
+            <h1 style={{ fontSize: '2rem', marginBottom: '15px', color: '#333' }}>Redirecting...</h1>
+            <p style={{ color: '#666', fontSize: '1.1rem' }}>
+              You will be redirected to {movieData.movieName} shortly.
+            </p>
+          </div>
+        </div>
+      );
+    }
   }
 
   return (
@@ -151,7 +222,7 @@ const RedirectPage = () => {
             textShadow: '0 2px 4px rgba(0,0,0,0.3)',
             margin: '0 0 30px 0'
           }}>
-            🎬 {movieLink.movieName}
+            🎬 {movieData.movieName}
           </h2>
           
           <div style={{
@@ -342,28 +413,67 @@ const RedirectPage = () => {
           {showContinueSection && (
             <div id="downloadSection" style={{ background: 'linear-gradient(135deg, #28a745, #20c997)', color: 'white', textAlign: 'center', padding: '40px', margin: '30px 0', borderRadius: '12px', boxShadow: '0 8px 30px rgba(40, 167, 69, 0.3)' }}>
               <div style={{ fontSize: '4em', marginBottom: '20px', textAlign: 'center' }}>🎬</div>
-              <p style={{ color: 'white', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', opacity: '1', display: 'block', textAlign: 'center', textShadow: '0 2px 4px rgba(0,0,0,0.3)', margin: '0 0 25px 0' }}>
-                <span style={{ fontSize: '1.2em', marginRight: '8px' }}>👇</span>
-                Click here to get your movie
-                <span style={{ fontSize: '1.2em', marginLeft: '8px' }}>👇</span>
-              </p>
-              <button 
-                onClick={handleContinue}
-                style={{
-                  background: 'linear-gradient(45deg, #007bff, #0056b3)',
-                  color: 'white',
-                  border: 'none',
-                  padding: '15px 30px',
-                  fontSize: '1.1em',
-                  fontWeight: 'bold',
-                  borderRadius: '30px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
-                }}
-              >
-                Continue
-              </button>
+              <h2 style={{ color: 'white', fontSize: '1.5em', fontWeight: 'bold', marginBottom: '25px', textAlign: 'center', textShadow: '0 2px 4px rgba(0,0,0,0.3)', margin: '0 0 25px 0' }}>
+                {movieData.movieName}
+              </h2>
+              
+              {movieData.linkType === "quality" ? (
+                // Quality movie links - show multiple buttons
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
+                  <p style={{ color: 'white', fontSize: '1.1em', marginBottom: '20px', textAlign: 'center', margin: '0 0 20px 0' }}>
+                    Choose quality to download:
+                  </p>
+                  {Object.entries(movieData.qualityLinks || {})
+                    .filter(([_, url]) => url)
+                    .map(([quality, url], index) => (
+                      <button 
+                        key={index}
+                        onClick={() => handleContinue(url as string)}
+                        style={{
+                          background: 'linear-gradient(45deg, #007bff, #0056b3)',
+                          color: 'white',
+                          border: 'none',
+                          padding: '15px 30px',
+                          fontSize: '1.1em',
+                          fontWeight: 'bold',
+                          borderRadius: '30px',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                          minWidth: '200px'
+                        }}
+                      >
+                        Continue ({quality.replace('quality', '').replace('p', 'p')})
+                      </button>
+                    ))}
+                </div>
+              ) : (
+                // Single movie link - show single button
+                <>
+                  <p style={{ color: 'white', fontSize: '1.2em', fontWeight: 'bold', marginBottom: '25px', opacity: '1', display: 'block', textAlign: 'center', textShadow: '0 2px 4px rgba(0,0,0,0.3)', margin: '0 0 25px 0' }}>
+                    <span style={{ fontSize: '1.2em', marginRight: '8px' }}>👇</span>
+                    Click here to get your movie
+                    <span style={{ fontSize: '1.2em', marginLeft: '8px' }}>👇</span>
+                  </p>
+                  <button 
+                    onClick={() => handleContinue(movieData.originalLink)}
+                    style={{
+                      background: 'linear-gradient(45deg, #007bff, #0056b3)',
+                      color: 'white',
+                      border: 'none',
+                      padding: '15px 30px',
+                      fontSize: '1.1em',
+                      fontWeight: 'bold',
+                      borderRadius: '30px',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                      boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
+                    }}
+                  >
+                    Continue
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>

@@ -27,6 +27,14 @@ const AdminPanel = () => {
   const [originalLink, setOriginalLink] = useState("");
   const [adsEnabled, setAdsEnabled] = useState(true);
   const [generatedLink, setGeneratedLink] = useState("");
+  
+  // Quality movie link states
+  const [qualityMovieName, setQualityMovieName] = useState("");
+  const [quality480p, setQuality480p] = useState("");
+  const [quality720p, setQuality720p] = useState("");
+  const [quality1080p, setQuality1080p] = useState("");
+  const [qualityAdsEnabled, setQualityAdsEnabled] = useState(true);
+  const [generatedQualityLink, setGeneratedQualityLink] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"name" | "date">("date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
@@ -57,6 +65,11 @@ const AdminPanel = () => {
     queryKey: ["/api/movie-links"],
   });
 
+  // Fetch quality movie links from API
+  const { data: qualityMovieLinks = [], isLoading: isQualityLoading } = useQuery({
+    queryKey: ["/api/quality-movie-links"],
+  });
+
   // Fetch API tokens
   const { data: apiTokens = [], isLoading: isTokensLoading } = useQuery({
     queryKey: ["/api/tokens"],
@@ -72,6 +85,19 @@ const AdminPanel = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/movie-links"] });
+    },
+  });
+
+  // Create quality movie link mutation
+  const createQualityMovieLinkMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return apiRequest("/api/quality-movie-links", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-movie-links"] });
     },
   });
 
@@ -281,6 +307,72 @@ const AdminPanel = () => {
     setGeneratedLink("");
   };
 
+  const handleGenerateQualityLink = async () => {
+    if (!qualityMovieName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a movie name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if at least one quality link is provided
+    if (!quality480p.trim() && !quality720p.trim() && !quality1080p.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one quality link",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const shortId = generateShortId();
+    const shortLink = `${window.location.origin}/m/${shortId}`;
+    
+    try {
+      const qualityLinks = {};
+      if (quality480p.trim()) qualityLinks.quality480p = quality480p.trim();
+      if (quality720p.trim()) qualityLinks.quality720p = quality720p.trim();
+      if (quality1080p.trim()) qualityLinks.quality1080p = quality1080p.trim();
+
+      await createQualityMovieLinkMutation.mutateAsync({
+        movieName: qualityMovieName.trim(),
+        shortId,
+        adsEnabled: qualityAdsEnabled,
+        ...qualityLinks
+      });
+      
+      setGeneratedQualityLink(shortLink);
+      toast({
+        title: "Quality Link Generated",
+        description: "Quality movie link created successfully!",
+      });
+
+      // Clear form
+      setQualityMovieName("");
+      setQuality480p("");
+      setQuality720p("");
+      setQuality1080p("");
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create quality movie link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopyQualityLink = () => {
+    navigator.clipboard.writeText(generatedQualityLink);
+    toast({
+      title: "Copied",
+      description: "Quality link copied to clipboard!",
+    });
+    // Clear the generated link after copying
+    setGeneratedQualityLink("");
+  };
+
   const handleDeleteLink = async (id: number) => {
     try {
       await deleteMovieLinkMutation.mutateAsync(id);
@@ -358,20 +450,23 @@ const AdminPanel = () => {
       }
     });
 
-  const totalViews = (movieLinks as any[]).reduce((sum, link) => sum + (link?.views || 0), 0);
+  // Combine both single and quality movie links for calculations
+  const allLinks = [...(movieLinks as any[]), ...(qualityMovieLinks as any[])];
+  
+  const totalViews = allLinks.reduce((sum, link) => sum + (link?.views || 0), 0);
   
   // Calculate today's stats
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  const todayLinks = (movieLinks as any[]).filter(link => {
+  const todayLinks = allLinks.filter(link => {
     if (!link?.date_added) return false;
     const linkDate = new Date(link.date_added);
     linkDate.setHours(0, 0, 0, 0);
     return linkDate.getTime() === today.getTime();
   }).length;
   
-  const todayViews = (movieLinks as any[])
+  const todayViews = allLinks
     .filter(link => {
       if (!link?.date_added) return false;
       const linkDate = new Date(link.date_added);
@@ -380,8 +475,8 @@ const AdminPanel = () => {
     })
     .reduce((sum, link) => sum + (link?.views || 0), 0);
   
-  // Get the most recent 5 links for the recent links section
-  const recentLinks = (movieLinks as any[])
+  // Get the most recent 5 links for the recent links section (combine both types)
+  const recentLinks = allLinks
     .slice()
     .sort((a, b) => {
       const dateA = a?.date_added ? new Date(a.date_added).getTime() : 0;
@@ -421,7 +516,7 @@ const AdminPanel = () => {
             <div className="grid grid-cols-2 gap-4">
               <Card>
                 <CardContent className="p-4 text-center">
-                  <div className="text-2xl font-bold text-primary">{(movieLinks as any[]).length}</div>
+                  <div className="text-2xl font-bold text-primary">{allLinks.length}</div>
                   <div className="text-sm text-muted-foreground">Total Links</div>
                 </CardContent>
               </Card>
@@ -445,53 +540,129 @@ const AdminPanel = () => {
               </Card>
             </div>
 
-            {/* Link Generator */}
+            {/* Link Generator with Tabs */}
             <Card>
-              <CardContent className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="movieName">Movie Name</Label>
-                  <Input
-                    id="movieName"
-                    value={movieName}
-                    onChange={(e) => setMovieName(e.target.value)}
-                    placeholder="Enter movie name"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="originalLink">Original Movie Link</Label>
-                  <Input
-                    id="originalLink"
-                    value={originalLink}
-                    onChange={(e) => setOriginalLink(e.target.value)}
-                    placeholder="Enter original movie download link"
-                  />
-                </div>
+              <CardContent className="p-6">
+                <Tabs defaultValue="single" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="single">Single Link</TabsTrigger>
+                    <TabsTrigger value="quality">Quality Links</TabsTrigger>
+                  </TabsList>
 
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    id="ads-toggle"
-                    checked={adsEnabled}
-                    onCheckedChange={setAdsEnabled}
-                  />
-                  <Label htmlFor="ads-toggle">Enable Ads (10s timer)</Label>
-                </div>
-
-                <Button onClick={handleGenerateLink} className="w-full">
-                  Generate Short Link
-                </Button>
-
-                {generatedLink && (
-                  <div className="space-y-2">
-                    <Label>Generated Short Link</Label>
-                    <div className="flex gap-2">
-                      <Input value={generatedLink} readOnly />
-                      <Button onClick={handleCopyLink} size="icon">
-                        <Copy className="w-4 h-4" />
-                      </Button>
+                  <TabsContent value="single" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="movieName">Movie Name</Label>
+                      <Input
+                        id="movieName"
+                        value={movieName}
+                        onChange={(e) => setMovieName(e.target.value)}
+                        placeholder="Enter movie name"
+                      />
                     </div>
-                  </div>
-                )}
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="originalLink">Original Movie Link</Label>
+                      <Input
+                        id="originalLink"
+                        value={originalLink}
+                        onChange={(e) => setOriginalLink(e.target.value)}
+                        placeholder="Enter original movie download link"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="ads-toggle"
+                        checked={adsEnabled}
+                        onCheckedChange={setAdsEnabled}
+                      />
+                      <Label htmlFor="ads-toggle">Enable Ads (10s timer)</Label>
+                    </div>
+
+                    <Button onClick={handleGenerateLink} className="w-full">
+                      Generate Short Link
+                    </Button>
+
+                    {generatedLink && (
+                      <div className="space-y-2">
+                        <Label>Generated Short Link</Label>
+                        <div className="flex gap-2">
+                          <Input value={generatedLink} readOnly />
+                          <Button onClick={handleCopyLink} size="icon">
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+
+                  <TabsContent value="quality" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="qualityMovieName">Movie Name</Label>
+                      <Input
+                        id="qualityMovieName"
+                        value={qualityMovieName}
+                        onChange={(e) => setQualityMovieName(e.target.value)}
+                        placeholder="Enter movie name"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="quality480p">480p Download Link</Label>
+                      <Input
+                        id="quality480p"
+                        value={quality480p}
+                        onChange={(e) => setQuality480p(e.target.value)}
+                        placeholder="Enter 480p download link (optional)"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="quality720p">720p Download Link</Label>
+                      <Input
+                        id="quality720p"
+                        value={quality720p}
+                        onChange={(e) => setQuality720p(e.target.value)}
+                        placeholder="Enter 720p download link (optional)"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="quality1080p">1080p Download Link</Label>
+                      <Input
+                        id="quality1080p"
+                        value={quality1080p}
+                        onChange={(e) => setQuality1080p(e.target.value)}
+                        placeholder="Enter 1080p download link (optional)"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="quality-ads-toggle"
+                        checked={qualityAdsEnabled}
+                        onCheckedChange={setQualityAdsEnabled}
+                      />
+                      <Label htmlFor="quality-ads-toggle">Enable Ads (10s timer)</Label>
+                    </div>
+
+                    <Button onClick={handleGenerateQualityLink} className="w-full">
+                      Generate Quality Link
+                    </Button>
+
+                    {generatedQualityLink && (
+                      <div className="space-y-2">
+                        <Label>Generated Short Link</Label>
+                        <div className="flex gap-2">
+                          <Input value={generatedQualityLink} readOnly />
+                          <Button onClick={handleCopyQualityLink} size="icon">
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
 
@@ -504,9 +675,18 @@ const AdminPanel = () => {
                 ) : (
                   <div className="space-y-3">
                     {recentLinks.map((link) => (
-                      <div key={link.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div key={`${link.quality480p ? 'quality' : 'single'}-${link.id}`} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{link.movie_name}</p>
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium truncate">{link.movie_name}</p>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              link.quality480p || link.quality720p || link.quality1080p 
+                                ? 'bg-purple-100 text-purple-800' 
+                                : 'bg-blue-100 text-blue-800'
+                            }`}>
+                              {link.quality480p || link.quality720p || link.quality1080p ? 'Quality' : 'Single'}
+                            </span>
+                          </div>
                           <p className="text-sm text-muted-foreground truncate">
                             {window.location.origin}/m/{link.short_id}
                           </p>
@@ -578,75 +758,161 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
-            {/* Database Table */}
+            {/* Database with Tabs for Single/Quality Links */}
             <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                     <TableHeader>
-                       <TableRow>
-                         <TableHead className="min-w-[150px]">Movie Name</TableHead>
-                         <TableHead className="hidden lg:table-cell min-w-[200px]">Original Link</TableHead>
-                         <TableHead className="min-w-[120px]">Short Link</TableHead>
-                         <TableHead className="min-w-[80px]">Views</TableHead>
-                         <TableHead className="hidden xl:table-cell">Date Added</TableHead>
-                         <TableHead className="w-[120px]">Actions</TableHead>
-                       </TableRow>
-                     </TableHeader>
-                    <TableBody>
-                      {filteredLinks.map((link) => (
-                         <TableRow key={link.id}>
-                           <TableCell className="font-medium">{link.movie_name}</TableCell>
-                           <TableCell className="hidden lg:table-cell max-w-64 truncate" title={link.original_link}>{link.original_link}</TableCell>
-                           <TableCell>
-                             <div className="flex items-center gap-2">
-                               <code className="text-sm">/m/{link.short_id}</code>
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => {
-                                   const fullUrl = `${window.location.origin}/m/${link.short_id}`;
-                                   navigator.clipboard.writeText(fullUrl);
-                                   toast({
-                                     title: "Copied",
-                                     description: "Short link copied to clipboard!",
-                                   });
-                                 }}
-                               >
-                                 <Copy className="w-4 h-4" />
-                               </Button>
-                             </div>
-                           </TableCell>
-                           <TableCell className="font-medium">{link.views}</TableCell>
-                           <TableCell className="hidden xl:table-cell">{new Date(link.date_added).toLocaleDateString()}</TableCell>
-                           <TableCell>
-                             <div className="flex gap-2">
-                               <Button
-                                 variant="outline"
-                                 size="sm"
-                                 onClick={() => handleEditLink(link)}
-                               >
-                                 <Edit className="w-4 h-4" />
-                               </Button>
-                               <Button
-                                 variant="destructive"
-                                 size="sm"
-                                 onClick={() => handleDeleteLink(link.id)}
-                               >
-                                 <Trash2 className="w-4 h-4" />
-                               </Button>
-                             </div>
-                           </TableCell>
-                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                {filteredLinks.length === 0 && (
-                  <div className="text-center py-8 text-muted-foreground">
-                    No links found
-                  </div>
-                )}
+              <CardContent className="p-6">
+                <Tabs defaultValue="single-links" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="single-links">Single Links</TabsTrigger>
+                    <TabsTrigger value="quality-links">Quality Links</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="single-links">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[150px]">Movie Name</TableHead>
+                            <TableHead className="hidden lg:table-cell min-w-[200px]">Original Link</TableHead>
+                            <TableHead className="min-w-[120px]">Short Link</TableHead>
+                            <TableHead className="min-w-[80px]">Views</TableHead>
+                            <TableHead className="hidden xl:table-cell">Date Added</TableHead>
+                            <TableHead className="w-[120px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredLinks.map((link) => (
+                            <TableRow key={link.id}>
+                              <TableCell className="font-medium">{link.movie_name}</TableCell>
+                              <TableCell className="hidden lg:table-cell max-w-64 truncate" title={link.original_link}>{link.original_link}</TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-sm">/m/{link.short_id}</code>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const fullUrl = `${window.location.origin}/m/${link.short_id}`;
+                                      navigator.clipboard.writeText(fullUrl);
+                                      toast({
+                                        title: "Copied",
+                                        description: "Short link copied to clipboard!",
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">{link.views}</TableCell>
+                              <TableCell className="hidden xl:table-cell">{new Date(link.date_added).toLocaleDateString()}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditLink(link)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleDeleteLink(link.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      {filteredLinks.length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No single links found
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="quality-links">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[150px]">Movie Name</TableHead>
+                            <TableHead className="min-w-[100px]">Available Qualities</TableHead>
+                            <TableHead className="min-w-[120px]">Short Link</TableHead>
+                            <TableHead className="min-w-[80px]">Views</TableHead>
+                            <TableHead className="hidden xl:table-cell">Date Added</TableHead>
+                            <TableHead className="w-[120px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(qualityMovieLinks as any[]).map((link) => (
+                            <TableRow key={link.id}>
+                              <TableCell className="font-medium">{link.movie_name}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  {link.quality480p && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">480p</span>}
+                                  {link.quality720p && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">720p</span>}
+                                  {link.quality1080p && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">1080p</span>}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-sm">/m/{link.short_id}</code>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const fullUrl = `${window.location.origin}/m/${link.short_id}`;
+                                      navigator.clipboard.writeText(fullUrl);
+                                      toast({
+                                        title: "Copied",
+                                        description: "Quality link copied to clipboard!",
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">{link.views}</TableCell>
+                              <TableCell className="hidden xl:table-cell">{new Date(link.date_added).toLocaleDateString()}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                      // Add delete quality link handler
+                                      if (confirm("Are you sure you want to delete this quality link?")) {
+                                        // Will implement delete quality link mutation
+                                        toast({
+                                          title: "Delete functionality",
+                                          description: "Quality link deletion will be implemented",
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      {(qualityMovieLinks as any[]).length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No quality links found
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>

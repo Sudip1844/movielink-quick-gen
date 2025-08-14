@@ -467,6 +467,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Redirect route for short URLs - handle both single and quality movie links
+  app.get("/m/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      
+      // First try to find in regular movie links
+      let movieLink = await storage.getMovieLinkByShortId(shortId);
+      let qualityMovieLink = null;
+      let linkType = "single";
+      
+      // If not found in regular movie links, try quality movie links
+      if (!movieLink) {
+        qualityMovieLink = await storage.getQualityMovieLinkByShortId(shortId);
+        linkType = "quality";
+      }
+      
+      if (!movieLink && !qualityMovieLink) {
+        // For expired/missing links, redirect to index with error parameter
+        return res.redirect("/?error=expired");
+      }
+
+      const link = movieLink || qualityMovieLink;
+      if (!link) {
+        return res.redirect("/?error=expired");
+      }
+
+      const linkData: any = {
+        movieName: link.movieName,
+        shortId: link.shortId,
+        adsEnabled: link.adsEnabled,
+        linkType
+      };
+
+      if (linkType === "quality" && qualityMovieLink) {
+        linkData.qualityLinks = {
+          quality480p: qualityMovieLink.quality480p,
+          quality720p: qualityMovieLink.quality720p,
+          quality1080p: qualityMovieLink.quality1080p
+        };
+      } else if (movieLink) {
+        linkData.originalLink = movieLink.originalLink;
+      }
+
+      // Encode link data as URL parameter
+      const encodedLinkData = encodeURIComponent(JSON.stringify(linkData));
+      res.redirect(`/?link=${encodedLinkData}`);
+    } catch (error) {
+      console.error("Error in redirect route:", error);
+      res.redirect("/?error=expired");
+    }
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
