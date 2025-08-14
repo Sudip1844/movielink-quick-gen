@@ -1,32 +1,41 @@
 # MovieZone Universal API Documentation
 
-## Universal API Endpoint for All Platforms
+MovieZone provides two different API services for creating short movie download links:
 
-### POST `/api/create-short-link` (Token Required)
+## API Token Types
 
-এই Universal API endpoint যেকোনো platform থেকে ব্যবহার করা যাবে:
-- **Telegram Bots** 
-- **Discord Bots**
-- **Web Applications**
-- **Mobile Apps**
-- **Any External Service**
+### 1. Single Link Service (`single` tokens)
+- Creates single movie download links
+- One movie = one download link
+- Endpoint: `/api/create-short-link`
 
-Movie title এবং original link পাঠিয়ে secure short link তৈরি করতে পারবেন।
+### 2. Quality Link Service (`quality` tokens) 
+- Creates multi-quality movie download links
+- One movie = multiple quality options (480p, 720p, 1080p)
+- Endpoint: `/api/create-quality-short-link`
+
+## Authentication
+
+All API requests require a valid Bearer token in the Authorization header:
+```
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+**Important:** Each token type can only access its specific service endpoint.
+
+---
+
+# Single Link Service API
+
+### POST `/api/create-short-link`
+
+Create a single movie download link.
 
 #### Authentication
-
-**Required:** API Token in Authorization header  
-**Format:** `Authorization: Bearer YOUR_API_TOKEN`
-
-#### Request
-
-**Method:** POST  
-**URL:** `http://yourhost:5000/api/create-short-link`  
-**Content-Type:** `application/json`  
-**Authorization:** `Bearer YOUR_API_TOKEN`
+**Required:** Single type API Token  
+**Header:** `Authorization: Bearer YOUR_SINGLE_TOKEN`
 
 #### Request Body
-
 ```json
 {
   "movieName": "Movie Title",
@@ -35,14 +44,12 @@ Movie title এবং original link পাঠিয়ে secure short link ত�
 ```
 
 **Parameters:**
-- `movieName` (required): মুভির নাম (string)
-- `originalLink` (required): মুভির অরিজিনাল ডাউনলোড লিংক (string)
-
-**Important Note:** API দিয়ে তৈরি সব short links এ ads **সবসময় enabled** থাকবে। Ads disable করার option নেই।
+- `movieName` (required): Movie title (string)
+- `originalLink` (required): Movie download URL (string)
 
 #### Response
 
-**Success Response (201):**
+**Success (201):**
 ```json
 {
   "success": true,
@@ -54,40 +61,41 @@ Movie title এবং original link পাঠিয়ে secure short link ত�
 }
 ```
 
-**Error Response (400):**
+**Error (400):**
 ```json
 {
-  "error": "Movie name is required"
+  "error": "Invalid data",
+  "details": [...]
 }
 ```
 
-**Error Response (500):**
+**Error (403):**
 ```json
 {
-  "error": "Failed to create short link"
+  "error": "This token is not authorized for single link creation"
 }
 ```
 
 #### Example Usage
 
-##### cURL Example:
+**cURL:**
 ```bash
 curl -X POST http://localhost:5000/api/create-short-link \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_API_TOKEN" \
+  -H "Authorization: Bearer moviezone_single_bot_token_2025_secure" \
   -d '{
     "movieName": "Avengers Endgame",
     "originalLink": "https://example.com/avengers-endgame-download"
   }'
 ```
 
-##### JavaScript Example:
+**JavaScript/Node.js:**
 ```javascript
-const response = await fetch('/api/create-short-link', {
+const response = await fetch('http://localhost:5000/api/create-short-link', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_API_TOKEN'
+    'Authorization': 'Bearer moviezone_single_bot_token_2025_secure'
   },
   body: JSON.stringify({
     movieName: 'Avengers Endgame',
@@ -96,164 +104,214 @@ const response = await fetch('/api/create-short-link', {
 });
 
 const data = await response.json();
-console.log('Short URL:', data.shortUrl);
+console.log(data.shortUrl); // http://localhost:5000/m/abc123
 ```
 
-##### Python Example:
+**Python:**
 ```python
 import requests
-import json
 
-url = "http://localhost:5000/api/create-short-link"
-headers = {
-    "Content-Type": "application/json",
-    "Authorization": "Bearer YOUR_API_TOKEN"
-}
-payload = {
-    "movieName": "Avengers Endgame",
-    "originalLink": "https://example.com/avengers-endgame-download"
-}
-
-response = requests.post(url, headers=headers, json=payload)
-data = response.json()
-print(f"Short URL: {data['shortUrl']}")
-```
-
-## Universal Integration বৈশিষ্ট্য
-
-### সব Platform থেকে তৈরি Links একসাথে ব্যবস্থাপনা:
-- **API থেকে তৈরি links** (Telegram Bot, Discord Bot, etc.)
-- **Admin Panel থেকে তৈরি links**
-- **সব links একই database table এ দেখাবে**
-- **সব links admin panel থেকে edit করা যাবে**
-- **Views count, movie name সবকিছু track হবে**
-
-### API vs Admin Panel Links পার্থক্য:
-- **API Links:** Ads সবসময় enabled (বন্ধ করা যাবে না)
-- **Admin Panel Links:** Ads on/off করার option আছে
-
-## API Token ব্যবস্থাপনা
-
-### API Token কীভাবে পাবেন?
-
-1. **Admin Panel** থেকে login করুন
-2. **API Tokens** ট্যাবে যান  
-3. **Generate New Token** বাটনে ক্লিক করুন
-4. Token এর নাম দিন (যেমন: "Telegram Bot Token")
-5. নতুন token copy করে নিন এবং নিরাপদ রাখুন
-
-### Security নোট:
-- প্রতিটি API token একবার দেখানো হয়
-- Token হারিয়ে গেলে নতুন token তৈরি করতে হবে
-- অব্যবহৃত token deactivate করে রাখুন
-
-## Error Responses
-
-### Authentication Errors:
-
-**No Token (401):**
-```json
-{
-  "error": "Access token required"
-}
-```
-
-**Invalid Token (403):**
-```json
-{
-  "error": "Invalid or inactive token"
-}
-```
-
-**Validation Error (400):**
-```json
-{
-  "error": "Invalid data",
-  "details": [
-    {
-      "code": "too_small",
-      "minimum": 1,
-      "path": ["movieName"],
-      "message": "Movie name is required"
+response = requests.post(
+    'http://localhost:5000/api/create-short-link',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer moviezone_single_bot_token_2025_secure'
+    },
+    json={
+        'movieName': 'Avengers Endgame',
+        'originalLink': 'https://example.com/avengers-endgame-download'
     }
-  ]
+)
+
+data = response.json()
+print(data['shortUrl'])  # http://localhost:5000/m/abc123
+```
+
+---
+
+# Quality Link Service API
+
+### POST `/api/create-quality-short-link`
+
+Create a multi-quality movie download link with up to 3 quality options.
+
+#### Authentication
+**Required:** Quality type API Token  
+**Header:** `Authorization: Bearer YOUR_QUALITY_TOKEN`
+
+#### Request Body
+```json
+{
+  "movieName": "Movie Title",
+  "quality480p": "https://example.com/movie-480p.mp4",
+  "quality720p": "https://example.com/movie-720p.mp4", 
+  "quality1080p": "https://example.com/movie-1080p.mp4"
 }
 ```
+
+**Parameters:**
+- `movieName` (required): Movie title (string)
+- `quality480p` (optional): 480p download URL (string)
+- `quality720p` (optional): 720p download URL (string)
+- `quality1080p` (optional): 1080p download URL (string)
+
+**Note:** At least one quality link must be provided.
+
+#### Response
+
+**Success (201):**
+```json
+{
+  "success": true,
+  "shortUrl": "http://yourhost:5000/m/def456",
+  "shortId": "def456",
+  "movieName": "Movie Title",
+  "qualityLinks": {
+    "quality480p": "https://example.com/movie-480p.mp4",
+    "quality720p": "https://example.com/movie-720p.mp4",
+    "quality1080p": "https://example.com/movie-1080p.mp4"
+  },
+  "adsEnabled": true
+}
+```
+
+**Error (400):**
+```json
+{
+  "error": "At least one quality link is required"
+}
+```
+
+**Error (403):**
+```json
+{
+  "error": "This token is not authorized for quality link creation"
+}
+```
+
+#### Example Usage
+
+**cURL:**
+```bash
+curl -X POST http://localhost:5000/api/create-quality-short-link \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer moviezone_quality_bot_token_2025_secure" \
+  -d '{
+    "movieName": "Spider-Man No Way Home",
+    "quality480p": "https://example.com/spiderman-480p.mp4",
+    "quality720p": "https://example.com/spiderman-720p.mp4",
+    "quality1080p": "https://example.com/spiderman-1080p.mp4"
+  }'
+```
+
+**JavaScript/Node.js:**
+```javascript
+const response = await fetch('http://localhost:5000/api/create-quality-short-link', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer moviezone_quality_bot_token_2025_secure'
+  },
+  body: JSON.stringify({
+    movieName: 'Spider-Man No Way Home',
+    quality480p: 'https://example.com/spiderman-480p.mp4',
+    quality720p: 'https://example.com/spiderman-720p.mp4',
+    quality1080p: 'https://example.com/spiderman-1080p.mp4'
+  })
+});
+
+const data = await response.json();
+console.log(data.shortUrl); // http://localhost:5000/m/def456
+```
+
+**Python:**
+```python
+import requests
+
+response = requests.post(
+    'http://localhost:5000/api/create-quality-short-link',
+    headers={
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer moviezone_quality_bot_token_2025_secure'
+    },
+    json={
+        'movieName': 'Spider-Man No Way Home',
+        'quality480p': 'https://example.com/spiderman-480p.mp4',
+        'quality720p': 'https://example.com/spiderman-720p.mp4',
+        'quality1080p': 'https://example.com/spiderman-1080p.mp4'
+    }
+)
+
+data = response.json()
+print(data['shortUrl'])  # http://localhost:5000/m/def456
+```
+
+---
 
 ## Platform Integration Examples
 
-### Telegram Bot Integration:
-```python
-import requests
-
-API_URL = "http://yourhost:5000/api/create-short-link"
-API_TOKEN = "your_api_token_here"
-
-def create_movie_short_link(movie_name, download_url):
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {API_TOKEN}"
-    }
-    payload = {
-        "movieName": movie_name,
-        "originalLink": download_url
-    }
-    
-    response = requests.post(API_URL, headers=headers, json=payload)
-    data = response.json()
-    
-    if data.get("success"):
-        return data["shortUrl"]
-    else:
-        return None
-
-# Usage in Telegram bot
-short_link = create_movie_short_link("Avengers Endgame", "https://example.com/download")
-# Send short_link in Telegram message
-```
-
-### Discord Bot Integration:
+### Telegram Bot Example
 ```javascript
-const axios = require('axios');
-
-const API_URL = 'http://yourhost:5000/api/create-short-link';
-const API_TOKEN = 'your_api_token_here';
-
-async function createMovieShortLink(movieName, originalLink) {
-    try {
-        const response = await axios.post(API_URL, {
-            movieName,
-            originalLink
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${API_TOKEN}`
-            }
-        });
-        
-        return response.data.shortUrl;
-    } catch (error) {
-        console.error('Error creating short link:', error);
-        return null;
-    }
-}
-
-// Usage in Discord bot
-const shortLink = await createMovieShortLink('Spider-Man', 'https://example.com/spiderman');
-// Send shortLink in Discord message
+// For single links
+bot.on('message', async (msg) => {
+  const response = await fetch('http://your-server.com/api/create-short-link', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer YOUR_SINGLE_TOKEN'
+    },
+    body: JSON.stringify({
+      movieName: msg.text,
+      originalLink: 'https://example.com/download'
+    })
+  });
+  
+  const data = await response.json();
+  bot.sendMessage(msg.chat.id, `Short link: ${data.shortUrl}`);
+});
 ```
 
-## Admin Panel Management
+### Discord Bot Example
+```javascript
+// For quality links
+client.on('messageCreate', async message => {
+  const response = await fetch('http://your-server.com/api/create-quality-short-link', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer YOUR_QUALITY_TOKEN'
+    },
+    body: JSON.stringify({
+      movieName: 'Movie Name',
+      quality720p: 'https://example.com/720p.mp4',
+      quality1080p: 'https://example.com/1080p.mp4'
+    })
+  });
+  
+  const data = await response.json();
+  message.reply(`Quality link created: ${data.shortUrl}`);
+});
+```
 
-### সব Links একসাথে দেখা:
-- API থেকে তৈরি links
-- Admin panel থেকে তৈরি links  
-- Views count এবং সব তথ্য
-- Original links edit করার সুবিধা
+---
 
-### Database Table Features:
-- **Movie Name**: মুভির নাম
-- **Original Link**: প্রকৃত ডাউনলোড লিংক (edit করা যায়)
-- **Short Link**: শর্ট URL (copy button সহ)  
-- **Views**: ক্লিক কাউন্ট
-- **Actions**: Edit এবং Delete বাটন
+## Important Notes
+
+1. **Ads Always Enabled**: All API-created links have ads enabled by default (cannot be disabled)
+2. **Token Security**: Keep your API tokens secure and never expose them in client-side code
+3. **Rate Limiting**: Consider implementing rate limiting in your applications
+4. **URL Validation**: All original links and quality links must be valid URLs
+5. **Unique Short IDs**: The system automatically generates unique short IDs for each link
+
+---
+
+## Getting API Tokens
+
+1. Access MovieZone Admin Panel
+2. Go to "API" tab  
+3. Click "Generate New Token"
+4. Select service type: "Single" or "Quality"
+5. Enter token name
+6. Copy the generated token
+
+**Remember:** Each token type can only access its corresponding service endpoint.

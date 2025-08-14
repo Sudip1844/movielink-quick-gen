@@ -102,6 +102,7 @@ export class DeprecatedMemStorage implements IStorage {
     const token: ApiToken = {
       ...insertToken,
       id,
+      tokenType: insertToken.tokenType ?? "single",
       isActive: insertToken.isActive ?? true,
       createdAt: new Date(),
       lastUsed: null,
@@ -299,6 +300,7 @@ export class DatabaseStorage implements IStorage {
     return await this.supabaseClient.insert('api_tokens', {
       token_name: insertToken.tokenName,
       token_value: insertToken.tokenValue,
+      token_type: insertToken.tokenType ?? "single",
       is_active: insertToken.isActive ?? true,
     });
   }

@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMovieLinkSchema, createShortLinkSchema, insertQualityMovieLinkSchema } from "@shared/schema";
+import { insertMovieLinkSchema, createShortLinkSchema, insertQualityMovieLinkSchema, createQualityShortLinkSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -102,9 +102,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Universal API endpoint for creating short links (for any external service)
+  // Universal API endpoint for creating single short links
   app.post("/api/create-short-link", authenticateToken, async (req, res) => {
     try {
+      // Check if token is for single links
+      const apiToken = (req as any).apiToken;
+      if (apiToken.tokenType !== "single") {
+        return res.status(403).json({ error: "This token is not authorized for single link creation" });
+      }
+
       const result = createShortLinkSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({ 
@@ -147,6 +153,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating short link:", error);
       res.status(500).json({ error: "Failed to create short link" });
+    }
+  });
+
+  // Universal API endpoint for creating quality short links
+  app.post("/api/create-quality-short-link", authenticateToken, async (req, res) => {
+    try {
+      // Check if token is for quality links
+      const apiToken = (req as any).apiToken;
+      if (apiToken.tokenType !== "quality") {
+        return res.status(403).json({ error: "This token is not authorized for quality link creation" });
+      }
+
+      const result = createQualityShortLinkSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: result.error.issues 
+        });
+      }
+      
+      const { movieName, quality480p, quality720p, quality1080p } = result.data;
+      
+      // Generate unique short ID
+      let shortId: string;
+      let attempts = 0;
+      do {
+        shortId = generateShortId();
+        attempts++;
+        if (attempts > 10) {
+          return res.status(500).json({ error: "Failed to generate unique short ID" });
+        }
+      } while (await storage.getQualityMovieLinkByShortId(shortId) || await storage.getMovieLinkByShortId(shortId));
+      
+      // API created links always have ads enabled (cannot be disabled)
+      const qualityMovieLink = await storage.createQualityMovieLink({
+        movieName,
+        shortId,
+        quality480p: quality480p || null,
+        quality720p: quality720p || null,
+        quality1080p: quality1080p || null,
+        adsEnabled: true, // Always true for API created links
+      });
+      
+      const shortUrl = `${req.protocol}://${req.get('host')}/m/${shortId}`;
+      
+      res.status(201).json({
+        success: true,
+        shortUrl,
+        shortId: qualityMovieLink.shortId,
+        movieName: qualityMovieLink.movieName,
+        qualityLinks: {
+          quality480p: qualityMovieLink.quality480p,
+          quality720p: qualityMovieLink.quality720p,
+          quality1080p: qualityMovieLink.quality1080p
+        },
+        adsEnabled: qualityMovieLink.adsEnabled,
+      });
+    } catch (error) {
+      console.error("Error creating quality short link:", error);
+      res.status(500).json({ error: "Failed to create quality short link" });
     }
   });
 
@@ -253,10 +319,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/tokens", async (req, res) => {
     try {
-      const { tokenName } = req.body;
+      const { tokenName, tokenType } = req.body;
       
       if (!tokenName || typeof tokenName !== "string") {
         return res.status(400).json({ error: "Token name is required" });
+      }
+      
+      if (!tokenType || !["single", "quality"].includes(tokenType)) {
+        return res.status(400).json({ error: "Token type must be 'single' or 'quality'" });
       }
       
       // Generate secure token
@@ -265,6 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const apiToken = await storage.createApiToken({
         tokenName,
         tokenValue,
+        tokenType,
         isActive: true,
       });
       

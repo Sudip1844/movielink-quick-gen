@@ -16,6 +16,7 @@ export const apiTokens = pgTable("api_tokens", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
   tokenName: text("token_name").notNull(),
   tokenValue: text("token_value").notNull().unique(),
+  tokenType: text("token_type").notNull().default("single"), // "single" or "quality"
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   lastUsed: timestamp("last_used", { withTimezone: true }),
@@ -58,6 +59,20 @@ export const createShortLinkSchema = z.object({
   // Note: adsEnabled is not included for API requests - always true
 });
 
+// API request schema for creating quality short links
+export const createQualityShortLinkSchema = z.object({
+  movieName: z.string().min(1, "Movie name is required"),
+  quality480p: z.string().url("Valid URL is required").optional(),
+  quality720p: z.string().url("Valid URL is required").optional(),
+  quality1080p: z.string().url("Valid URL is required").optional(),
+}).refine(
+  (data) => data.quality480p || data.quality720p || data.quality1080p,
+  {
+    message: "At least one quality link is required",
+    path: ["quality480p"]
+  }
+);
+
 // Admin Settings Schema
 export const adminSettings = pgTable("admin_settings", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
@@ -76,6 +91,7 @@ export type MovieLink = typeof movieLinks.$inferSelect;
 export type InsertApiToken = z.infer<typeof insertApiTokenSchema>;
 export type ApiToken = typeof apiTokens.$inferSelect;
 export type CreateShortLinkRequest = z.infer<typeof createShortLinkSchema>;
+export type CreateQualityShortLinkRequest = z.infer<typeof createQualityShortLinkSchema>;
 export type InsertAdminSettings = z.infer<typeof insertAdminSettingsSchema>;
 export type AdminSettings = typeof adminSettings.$inferSelect;
 export type InsertQualityMovieLink = z.infer<typeof insertQualityMovieLinkSchema>;

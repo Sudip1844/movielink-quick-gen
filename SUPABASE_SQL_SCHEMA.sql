@@ -35,6 +35,7 @@ CREATE TABLE api_tokens (
     id BIGSERIAL PRIMARY KEY,
     token_name TEXT NOT NULL,
     token_value TEXT NOT NULL UNIQUE,
+    token_type TEXT NOT NULL DEFAULT 'single', -- 'single' or 'quality'
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     last_used TIMESTAMP WITH TIME ZONE
@@ -61,9 +62,10 @@ INSERT INTO admin_settings (admin_id, admin_password)
 VALUES ('sudip1844', 'save@184455') 
 ON CONFLICT (admin_id) DO NOTHING;
 
--- 8. Insert a sample API token for testing (you can change this)
-INSERT INTO api_tokens (token_name, token_value, is_active) 
-VALUES ('Bot Token', 'moviezone_bot_token_2025_secure', true);
+-- 8. Insert sample API tokens for testing (you can change these)
+INSERT INTO api_tokens (token_name, token_value, token_type, is_active) VALUES
+('Single Bot Token', 'moviezone_single_bot_token_2025_secure', 'single', true),
+('Quality Bot Token', 'moviezone_quality_bot_token_2025_secure', 'quality', true);
 
 -- 9. Optional: Insert some sample data for testing
 INSERT INTO movie_links (movie_name, original_link, short_id, views, ads_enabled) VALUES
