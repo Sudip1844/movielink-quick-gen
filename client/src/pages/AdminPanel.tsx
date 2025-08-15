@@ -203,6 +203,10 @@ const AdminPanel = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quality-movie-links"] });
+      // Force refresh to ensure UI updates immediately
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/quality-movie-links"] });
+      }, 100);
     },
   });
 
@@ -963,9 +967,12 @@ const AdminPanel = () => {
                               <TableCell className="font-medium">{link.movie_name}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
-                                  {(link.quality480p || link.quality_480p) && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">480p</span>}
-                                  {(link.quality720p || link.quality_720p) && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">720p</span>}
-                                  {(link.quality1080p || link.quality_1080p) && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">1080p</span>}
+                                  {(link.quality_480p && link.quality_480p.trim()) && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">480p</span>}
+                                  {(link.quality_720p && link.quality_720p.trim()) && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">720p</span>}
+                                  {(link.quality_1080p && link.quality_1080p.trim()) && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">1080p</span>}
+                                  {!(link.quality_480p?.trim() || link.quality_720p?.trim() || link.quality_1080p?.trim()) && (
+                                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">No qualities available</span>
+                                  )}
                                 </div>
                               </TableCell>
                               <TableCell>
