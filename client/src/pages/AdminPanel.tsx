@@ -45,7 +45,7 @@ const AdminPanel = () => {
   
   // Quality Episode states  
   const [seriesName, setSeriesName] = useState("");
-  const [startFromEpisode, setStartFromEpisode] = useState(1);
+  const [startFromEpisode, setStartFromEpisode] = useState("");
   const [episodes, setEpisodes] = useState<Array<{
     episodeNumber: number;
     quality480p: string;
@@ -89,9 +89,10 @@ const AdminPanel = () => {
 
   // Update episode numbers when startFromEpisode changes
   useEffect(() => {
+    const startNumber = parseInt(startFromEpisode) || 1;
     setEpisodes(prev => prev.map((episode, index) => ({
       ...episode,
-      episodeNumber: startFromEpisode + index
+      episodeNumber: startNumber + index
     })));
   }, [startFromEpisode]);
 
@@ -434,7 +435,8 @@ const AdminPanel = () => {
 
   // Quality Episode handlers
   const handleAddEpisode = () => {
-    const nextEpisodeNumber = Math.max(...episodes.map(ep => ep.episodeNumber), startFromEpisode - 1) + 1;
+    const startNumber = parseInt(startFromEpisode) || 1;
+    const nextEpisodeNumber = Math.max(...episodes.map(ep => ep.episodeNumber), startNumber - 1) + 1;
     setEpisodes(prev => [...prev, {
       episodeNumber: nextEpisodeNumber,
       quality480p: "",
@@ -482,7 +484,7 @@ const AdminPanel = () => {
       const qualityEpisode = await createQualityEpisodeMutation.mutateAsync({
         seriesName,
         shortId,
-        startFromEpisode,
+        startFromEpisode: parseInt(startFromEpisode) || 1,
         episodes: JSON.stringify(episodes),
         adsEnabled: episodeAdsEnabled,
       });
@@ -497,7 +499,7 @@ const AdminPanel = () => {
 
       // Reset form
       setSeriesName("");
-      setStartFromEpisode(1);
+      setStartFromEpisode("");
       setEpisodes([{
         episodeNumber: 1,
         quality480p: "",
@@ -969,7 +971,7 @@ const AdminPanel = () => {
                         type="number"
                         min={1}
                         value={startFromEpisode}
-                        onChange={(e) => setStartFromEpisode(parseInt(e.target.value) || 1)}
+                        onChange={(e) => setStartFromEpisode(e.target.value)}
                         placeholder="Starting episode number"
                       />
                     </div>
@@ -1548,9 +1550,9 @@ const AdminPanel = () => {
                 <h3 className="text-lg font-semibold mb-4">API Usage Instructions</h3>
                 <Tabs defaultValue="single-api" className="w-full">
                   <TabsList className="grid w-full grid-cols-3">
-                    <TabsTrigger value="single-api">Single Links API</TabsTrigger>
-                    <TabsTrigger value="quality-api">Quality Links API</TabsTrigger>
-                    <TabsTrigger value="episode-api">Episode Series API</TabsTrigger>
+                    <TabsTrigger value="single-api">Single</TabsTrigger>
+                    <TabsTrigger value="quality-api">Quality</TabsTrigger>
+                    <TabsTrigger value="episode-api">Episode</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="single-api" className="space-y-4 text-sm">
@@ -1741,11 +1743,11 @@ const AdminPanel = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Movie Name</Label>
-                <Input value={editingLink?.movieName || editingLink?.movie_name || ""} readOnly />
+                <Input value={editingLink?.movieName || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label>Short ID</Label>
-                <Input value={editingLink?.shortId || editingLink?.short_id || ""} readOnly />
+                <Input value={editingLink?.shortId || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editOriginalLink">Original Link</Label>
