@@ -109,6 +109,43 @@ const RedirectPage = () => {
     }
   }, [countdown, movieData?.adsEnabled, movieData?.skipTimer]);
 
+  // Prevent scrolling during countdown
+  useEffect(() => {
+    if (movieData?.adsEnabled && !movieData?.skipTimer && countdown > 0) {
+      // Disable scrolling
+      document.body.style.overflow = 'hidden';
+      document.documentElement.style.overflow = 'hidden';
+      
+      // Prevent scroll events
+      const preventScroll = (e: Event) => {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      };
+      
+      const preventKeyboardScroll = (e: KeyboardEvent) => {
+        if (['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' '].includes(e.key)) {
+          e.preventDefault();
+          return false;
+        }
+      };
+
+      document.addEventListener('wheel', preventScroll, { passive: false });
+      document.addEventListener('touchmove', preventScroll, { passive: false });
+      document.addEventListener('keydown', preventKeyboardScroll, { passive: false });
+      
+      return () => {
+        // Re-enable scrolling
+        document.body.style.overflow = 'auto';
+        document.documentElement.style.overflow = 'auto';
+        
+        document.removeEventListener('wheel', preventScroll);
+        document.removeEventListener('touchmove', preventScroll);
+        document.removeEventListener('keydown', preventKeyboardScroll);
+      };
+    }
+  }, [countdown, movieData?.adsEnabled, movieData?.skipTimer]);
+
   const handleContinue = (link: string) => {
     window.location.href = link;
   };
