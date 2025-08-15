@@ -1,4 +1,4 @@
-import { movieLinks, apiTokens, adminSettings, qualityMovieLinks, adViewSessions, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings, type QualityMovieLink, type InsertQualityMovieLink, type AdViewSession, type InsertAdViewSession } from "@shared/schema";
+import { movieLinks, apiTokens, adminSettings, qualityMovieLinks, qualityEpisodes, adViewSessions, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings, type QualityMovieLink, type InsertQualityMovieLink, type QualityEpisode, type InsertQualityEpisode, type AdViewSession, type InsertAdViewSession } from "@shared/schema";
 
 // Storage interface for movie links and API tokens
 export interface IStorage {
@@ -29,6 +29,14 @@ export interface IStorage {
   updateQualityMovieLinkViews(shortId: string): Promise<void>;
   updateQualityMovieLink(id: number, updates: Partial<InsertQualityMovieLink>): Promise<QualityMovieLink>;
   deleteQualityMovieLink(id: number): Promise<void>;
+  
+  // Quality Episodes methods (NEW FEATURE)
+  createQualityEpisode(episode: InsertQualityEpisode): Promise<QualityEpisode>;
+  getQualityEpisodes(): Promise<QualityEpisode[]>;
+  getQualityEpisodeByShortId(shortId: string): Promise<QualityEpisode | undefined>;
+  updateQualityEpisodeViews(shortId: string): Promise<void>;
+  updateQualityEpisode(id: number, updates: Partial<InsertQualityEpisode>): Promise<QualityEpisode>;
+  deleteQualityEpisode(id: number): Promise<void>;
   
   // Ad View Sessions (5 minute timer skip functionality)
   hasSeenAd(ipAddress: string, shortId: string, linkType?: string): Promise<boolean>;
@@ -216,6 +224,31 @@ export class DeprecatedMemStorage implements IStorage {
 
   async deleteQualityMovieLink(id: number): Promise<void> {
     this.qualityMovieLinks.delete(id);
+  }
+
+  // Quality Episodes methods (placeholder for deprecated memory storage)
+  async createQualityEpisode(insertQualityEpisode: InsertQualityEpisode): Promise<QualityEpisode> {
+    throw new Error("Memory storage doesn't support quality episodes");
+  }
+
+  async getQualityEpisodes(): Promise<QualityEpisode[]> {
+    return [];
+  }
+
+  async getQualityEpisodeByShortId(shortId: string): Promise<QualityEpisode | undefined> {
+    return undefined;
+  }
+
+  async updateQualityEpisodeViews(shortId: string): Promise<void> {
+    // No-op in memory storage
+  }
+
+  async updateQualityEpisode(id: number, updates: Partial<InsertQualityEpisode>): Promise<QualityEpisode> {
+    throw new Error("Memory storage doesn't support quality episodes");
+  }
+
+  async deleteQualityEpisode(id: number): Promise<void> {
+    // No-op in memory storage
   }
 
   // Ad View Sessions methods (placeholder for deprecated memory storage)
@@ -615,6 +648,79 @@ export class DatabaseStorage implements IStorage {
     } catch (error) {
       console.error('Error cleaning up expired sessions:', error);
     }
+  }
+
+  // Quality Episodes methods (NEW FEATURE)
+  async createQualityEpisode(insertQualityEpisode: InsertQualityEpisode): Promise<QualityEpisode> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.insert('quality_episodes', {
+      series_name: insertQualityEpisode.seriesName,
+      short_id: insertQualityEpisode.shortId,
+      start_from_episode: insertQualityEpisode.startFromEpisode,
+      episodes: insertQualityEpisode.episodes,
+      ads_enabled: insertQualityEpisode.adsEnabled ?? true,
+    });
+  }
+
+  async getQualityEpisodes(): Promise<QualityEpisode[]> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.select('quality_episodes');
+  }
+
+  async getQualityEpisodeByShortId(shortId: string): Promise<QualityEpisode | undefined> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.select('quality_episodes', '*', { short_id: shortId });
+    return result[0];
+  }
+
+  async updateQualityEpisodeViews(shortId: string): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    // First get current views
+    const current = await this.supabaseClient.select('quality_episodes', 'views', { short_id: shortId });
+    if (current[0]) {
+      const newViews = (current[0].views || 0) + 1;
+      await this.supabaseClient.update('quality_episodes', { views: newViews }, { short_id: shortId });
+    }
+  }
+
+  async updateQualityEpisode(id: number, updates: Partial<InsertQualityEpisode>): Promise<QualityEpisode> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    const updateData: any = {};
+    if (updates.seriesName !== undefined) updateData.series_name = updates.seriesName;
+    if (updates.startFromEpisode !== undefined) updateData.start_from_episode = updates.startFromEpisode;
+    if (updates.episodes !== undefined) updateData.episodes = updates.episodes;
+    if (updates.adsEnabled !== undefined) updateData.ads_enabled = updates.adsEnabled;
+    
+    const result = await this.supabaseClient.update('quality_episodes', updateData, { id });
+    if (!result) {
+      throw new Error("Quality episode not found");
+    }
+    return result;
+  }
+
+  async deleteQualityEpisode(id: number): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    await this.supabaseClient.delete('quality_episodes', { id });
   }
 }
 

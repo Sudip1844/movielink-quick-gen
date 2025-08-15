@@ -73,6 +73,27 @@ export const createQualityShortLinkSchema = z.object({
   }
 );
 
+// Episode data schema for Quality Episodes feature
+export const episodeDataSchema = z.object({
+  episodeNumber: z.number().min(1),
+  quality480p: z.string().url().optional(),
+  quality720p: z.string().url().optional(),
+  quality1080p: z.string().url().optional(),
+}).refine(
+  (data) => data.quality480p || data.quality720p || data.quality1080p,
+  {
+    message: "At least one quality link is required for episode",
+    path: ["quality480p"]
+  }
+);
+
+// API request schema for creating quality episode series
+export const createQualityEpisodeSchema = z.object({
+  seriesName: z.string().min(1, "Series name is required"),
+  startFromEpisode: z.number().min(1, "Start episode must be at least 1"),
+  episodes: z.array(episodeDataSchema).min(1, "At least one episode is required"),
+});
+
 // Admin Settings Schema
 export const adminSettings = pgTable("admin_settings", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
@@ -95,9 +116,26 @@ export const adViewSessions = pgTable("ad_view_sessions", {
   expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
 });
 
+export const qualityEpisodes = pgTable("quality_episodes", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  seriesName: text("series_name").notNull(),
+  shortId: text("short_id").notNull().unique(),
+  startFromEpisode: integer("start_from_episode").notNull().default(1),
+  episodes: text("episodes").notNull(), // JSON string containing episode data
+  views: integer("views").notNull().default(0),
+  dateAdded: timestamp("date_added", { withTimezone: true }).notNull().defaultNow(),
+  adsEnabled: boolean("ads_enabled").notNull().default(true),
+});
+
 export const insertAdViewSessionSchema = createInsertSchema(adViewSessions).omit({
   id: true,
   viewedAt: true,
+});
+
+export const insertQualityEpisodeSchema = createInsertSchema(qualityEpisodes).omit({
+  id: true,
+  views: true,
+  dateAdded: true,
 });
 
 export type InsertMovieLink = z.infer<typeof insertMovieLinkSchema>;
@@ -112,3 +150,7 @@ export type InsertQualityMovieLink = z.infer<typeof insertQualityMovieLinkSchema
 export type QualityMovieLink = typeof qualityMovieLinks.$inferSelect;
 export type InsertAdViewSession = z.infer<typeof insertAdViewSessionSchema>;
 export type AdViewSession = typeof adViewSessions.$inferSelect;
+export type InsertQualityEpisode = z.infer<typeof insertQualityEpisodeSchema>;
+export type QualityEpisode = typeof qualityEpisodes.$inferSelect;
+export type EpisodeData = z.infer<typeof episodeDataSchema>;
+export type CreateQualityEpisodeRequest = z.infer<typeof createQualityEpisodeSchema>;

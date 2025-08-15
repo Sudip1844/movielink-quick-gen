@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { MovieLink, InsertMovieLink, ApiToken, InsertApiToken } from "@shared/schema";
+import type { MovieLink, InsertMovieLink, ApiToken, InsertApiToken, QualityEpisode, InsertQualityEpisode } from "@shared/schema";
 
 const AdminPanel = () => {
   const [, setLocation] = useLocation();
@@ -43,9 +43,26 @@ const AdminPanel = () => {
   const [editAdsEnabled, setEditAdsEnabled] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
+  // Quality Episode states  
+  const [seriesName, setSeriesName] = useState("");
+  const [startFromEpisode, setStartFromEpisode] = useState(1);
+  const [episodes, setEpisodes] = useState<Array<{
+    episodeNumber: number;
+    quality480p: string;
+    quality720p: string;
+    quality1080p: string;
+  }>>([{
+    episodeNumber: 1,
+    quality480p: "",
+    quality720p: "",
+    quality1080p: ""
+  }]);
+  const [episodeAdsEnabled, setEpisodeAdsEnabled] = useState(true);
+  const [generatedEpisodeLink, setGeneratedEpisodeLink] = useState("");
+  
   // API Token states
   const [tokenName, setTokenName] = useState("");
-  const [tokenType, setTokenType] = useState<"single" | "quality">("single");
+  const [tokenType, setTokenType] = useState<"single" | "quality" | "episode">("single");
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [generatedToken, setGeneratedToken] = useState("");
   const [editingToken, setEditingToken] = useState<any | null>(null);
@@ -80,6 +97,11 @@ const AdminPanel = () => {
     queryKey: ["/api/quality-movie-links"],
   });
 
+  // Fetch quality episodes from API
+  const { data: qualityEpisodes = [], isLoading: isEpisodesLoading } = useQuery({
+    queryKey: ["/api/quality-episodes"],
+  });
+
   // Fetch API tokens
   const { data: apiTokens = [], isLoading: isTokensLoading } = useQuery({
     queryKey: ["/api/tokens"],
@@ -108,6 +130,31 @@ const AdminPanel = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quality-movie-links"] });
+    },
+  });
+
+  // Create quality episode mutation
+  const createQualityEpisodeMutation = useMutation({
+    mutationFn: async (data: InsertQualityEpisode) => {
+      return apiRequest("/api/quality-episodes", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-episodes"] });
+    },
+  });
+
+  // Delete quality episode mutation
+  const deleteQualityEpisodeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/quality-episodes/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-episodes"] });
     },
   });
 
@@ -377,6 +424,88 @@ const AdminPanel = () => {
 
   // Admin credentials update removed - now managed only via Supabase database
 
+  // Quality Episode handlers
+  const handleAddEpisode = () => {
+    const nextEpisodeNumber = Math.max(...episodes.map(ep => ep.episodeNumber), startFromEpisode - 1) + 1;
+    setEpisodes(prev => [...prev, {
+      episodeNumber: nextEpisodeNumber,
+      quality480p: "",
+      quality720p: "",
+      quality1080p: ""
+    }]);
+  };
+
+  const handleRemoveEpisode = (index: number) => {
+    if (episodes.length > 1) {
+      setEpisodes(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleEpisodeChange = (index: number, field: keyof (typeof episodes)[0], value: string | number) => {
+    setEpisodes(prev => prev.map((episode, i) => 
+      i === index ? { ...episode, [field]: value } : episode
+    ));
+  };
+
+  const handleGenerateEpisodeLink = async () => {
+    if (!seriesName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a series name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate that all episodes have at least one quality link
+    for (const episode of episodes) {
+      if (!episode.quality480p.trim() && !episode.quality720p.trim() && !episode.quality1080p.trim()) {
+        toast({
+          title: "Error",
+          description: `Episode ${episode.episodeNumber} needs at least one quality link`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    const shortId = generateShortId();
+    try {
+      const qualityEpisode = await createQualityEpisodeMutation.mutateAsync({
+        seriesName,
+        shortId,
+        startFromEpisode,
+        episodes: JSON.stringify(episodes),
+        adsEnabled: episodeAdsEnabled,
+      });
+
+      const shortUrl = `${window.location.origin}/e/${shortId}`;
+      setGeneratedEpisodeLink(shortUrl);
+      
+      toast({
+        title: "Success",
+        description: "Quality episode series created successfully!",
+      });
+
+      // Reset form
+      setSeriesName("");
+      setStartFromEpisode(1);
+      setEpisodes([{
+        episodeNumber: 1,
+        quality480p: "",
+        quality720p: "",
+        quality1080p: ""
+      }]);
+      setEpisodeAdsEnabled(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create quality episode series",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleGenerateLink = async () => {
     if (!movieName.trim() || !originalLink.trim()) {
       toast({
@@ -492,6 +621,16 @@ const AdminPanel = () => {
     setGeneratedQualityLink("");
   };
 
+  const handleCopyEpisodeLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Copied!",
+      description: "Episode series link copied to clipboard",
+    });
+    // Clear generated link after copying
+    setGeneratedEpisodeLink("");
+  };
+
   const handleDeleteLink = async (id: number) => {
     try {
       await deleteMovieLinkMutation.mutateAsync(id);
@@ -571,8 +710,8 @@ const AdminPanel = () => {
       }
     });
 
-  // Combine both single and quality movie links for calculations
-  const allLinks = [...(movieLinks as any[]), ...(qualityMovieLinks as any[])];
+  // Combine single, quality, and episode links for calculations
+  const allLinks = [...(movieLinks as any[]), ...(qualityMovieLinks as any[]), ...(qualityEpisodes as any[])];
   
   const totalViews = allLinks.reduce((sum, link) => sum + (link?.views || 0), 0);
   
@@ -596,10 +735,26 @@ const AdminPanel = () => {
     })
     .reduce((sum, link) => sum + (link?.views || 0), 0);
   
-  // Get the most recent 5 links for the recent links section (combine both types)
+  // Get the most recent 5 links for the recent links section (combine all types)
   const recentLinks = [
-    ...((movieLinks as any[]) || []).map((link: any) => ({ ...link, linkType: 'single' })),
-    ...((qualityMovieLinks as any[]) || []).map((link: any) => ({ ...link, linkType: 'quality' }))
+    ...((movieLinks as any[]) || []).map((link: any) => ({ 
+      ...link, 
+      linkType: 'single',
+      name: link.movie_name || link.movieName,
+      url_prefix: '/m/'
+    })),
+    ...((qualityMovieLinks as any[]) || []).map((link: any) => ({ 
+      ...link, 
+      linkType: 'quality',
+      name: link.movie_name || link.movieName,
+      url_prefix: '/m/'
+    })),
+    ...((qualityEpisodes as any[]) || []).map((link: any) => ({ 
+      ...link, 
+      linkType: 'episode',
+      name: link.series_name || link.seriesName,
+      url_prefix: '/e/'
+    }))
   ]
     .slice()
     .sort((a, b) => {
@@ -668,9 +823,10 @@ const AdminPanel = () => {
             <Card>
               <CardContent className="p-6">
                 <Tabs defaultValue="single" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
                     <TabsTrigger value="single">Single Link</TabsTrigger>
                     <TabsTrigger value="quality">Quality Links</TabsTrigger>
+                    <TabsTrigger value="episodes">Episodes</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="single" className="space-y-4">
@@ -786,6 +942,108 @@ const AdminPanel = () => {
                       </div>
                     )}
                   </TabsContent>
+
+                  <TabsContent value="episodes" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="seriesName">Series Name</Label>
+                      <Input
+                        id="seriesName"
+                        value={seriesName}
+                        onChange={(e) => setSeriesName(e.target.value)}
+                        placeholder="Enter series/movie name"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="startFromEpisode">Start From Episode</Label>
+                      <Input
+                        id="startFromEpisode"
+                        type="number"
+                        min={1}
+                        value={startFromEpisode}
+                        onChange={(e) => setStartFromEpisode(parseInt(e.target.value) || 1)}
+                        placeholder="Starting episode number"
+                      />
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label>Episodes ({episodes.length})</Label>
+                        <Button onClick={handleAddEpisode} variant="outline" size="sm">
+                          Add Episode
+                        </Button>
+                      </div>
+                      
+                      {episodes.map((episode, index) => (
+                        <div key={index} className="border rounded-lg p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="font-semibold">Episode {episode.episodeNumber}</Label>
+                            {episodes.length > 1 && (
+                              <Button 
+                                onClick={() => handleRemoveEpisode(index)}
+                                variant="destructive" 
+                                size="sm"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>480p Download Link</Label>
+                            <Input
+                              value={episode.quality480p}
+                              onChange={(e) => handleEpisodeChange(index, 'quality480p', e.target.value)}
+                              placeholder="480p download link"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>720p Download Link</Label>
+                            <Input
+                              value={episode.quality720p}
+                              onChange={(e) => handleEpisodeChange(index, 'quality720p', e.target.value)}
+                              placeholder="720p download link"
+                            />
+                          </div>
+                          
+                          <div className="space-y-2">
+                            <Label>1080p Download Link</Label>
+                            <Input
+                              value={episode.quality1080p}
+                              onChange={(e) => handleEpisodeChange(index, 'quality1080p', e.target.value)}
+                              placeholder="1080p download link"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="episode-ads-toggle"
+                        checked={episodeAdsEnabled}
+                        onCheckedChange={setEpisodeAdsEnabled}
+                      />
+                      <Label htmlFor="episode-ads-toggle">Enable Ads (10s timer)</Label>
+                    </div>
+
+                    <Button onClick={handleGenerateEpisodeLink} className="w-full">
+                      Generate Episode Series Link
+                    </Button>
+
+                    {generatedEpisodeLink && (
+                      <div className="space-y-2">
+                        <Label>Generated Episode Series Link</Label>
+                        <div className="flex gap-2">
+                          <Input value={generatedEpisodeLink} readOnly />
+                          <Button onClick={() => handleCopyEpisodeLink(generatedEpisodeLink)} size="icon">
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
@@ -802,17 +1060,19 @@ const AdminPanel = () => {
                       <div key={`${link.linkType}-${link.id}`} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <p className="font-medium truncate">{link.movie_name}</p>
+                            <p className="font-medium truncate">{link.name}</p>
                             <span className={`text-xs px-2 py-1 rounded-full ${
                               link.linkType === 'quality'
                                 ? 'bg-purple-100 text-purple-800' 
+                                : link.linkType === 'episode'
+                                ? 'bg-green-100 text-green-800'
                                 : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {link.linkType === 'quality' ? 'Quality' : 'Single'}
+                              {link.linkType === 'quality' ? 'Quality' : link.linkType === 'episode' ? 'Episodes' : 'Single'}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground truncate">
-                            {window.location.origin}/m/{link.short_id}
+                            {window.location.origin}{link.url_prefix}{link.short_id}
                           </p>
                         </div>
                         <div className="flex items-center gap-2 ml-2">
@@ -821,7 +1081,7 @@ const AdminPanel = () => {
                             size="sm"
                             variant="outline"
                             onClick={() => {
-                              navigator.clipboard.writeText(`${window.location.origin}/m/${link.short_id}`);
+                              navigator.clipboard.writeText(`${window.location.origin}${link.url_prefix}${link.short_id}`);
                               toast({
                                 title: "Copied",
                                 description: "Link copied to clipboard!",
@@ -882,13 +1142,14 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
-            {/* Database with Tabs for Single/Quality Links */}
+            {/* Database with Tabs for Single/Quality/Episode Links */}
             <Card>
               <CardContent className="p-6">
                 <Tabs defaultValue="single-links" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
                     <TabsTrigger value="single-links">Single Links</TabsTrigger>
                     <TabsTrigger value="quality-links">Quality Links</TabsTrigger>
+                    <TabsTrigger value="episode-links">Episode Series</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="single-links">
@@ -1037,6 +1298,86 @@ const AdminPanel = () => {
                       )}
                     </div>
                   </TabsContent>
+
+                  <TabsContent value="episode-links">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[150px]">Series Name</TableHead>
+                            <TableHead className="min-w-[100px]">Episodes</TableHead>
+                            <TableHead className="min-w-[120px]">Short Link</TableHead>
+                            <TableHead className="min-w-[80px]">Views</TableHead>
+                            <TableHead className="hidden xl:table-cell">Date Added</TableHead>
+                            <TableHead className="w-[120px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(qualityEpisodes as any[]).map((episode) => (
+                            <TableRow key={episode.id}>
+                              <TableCell className="font-medium">{episode.series_name || episode.seriesName}</TableCell>
+                              <TableCell>
+                                <div className="text-sm">
+                                  <span className="font-medium">
+                                    {(() => {
+                                      try {
+                                        const episodes = JSON.parse(episode.episodes);
+                                        const startEpisode = episode.start_from_episode || episode.startFromEpisode || 1;
+                                        return `${episodes.length} episodes (from ${startEpisode})`;
+                                      } catch {
+                                        return "Invalid episodes data";
+                                      }
+                                    })()}
+                                  </span>
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-sm">/e/{episode.short_id || episode.shortId}</code>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const fullUrl = `${window.location.origin}/e/${episode.short_id || episode.shortId}`;
+                                      navigator.clipboard.writeText(fullUrl);
+                                      toast({
+                                        title: "Copied",
+                                        description: "Episode series link copied to clipboard!",
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">{episode.views}</TableCell>
+                              <TableCell className="hidden xl:table-cell">{new Date(episode.date_added).toLocaleDateString()}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                      if (confirm("Are you sure you want to delete this episode series?")) {
+                                        deleteQualityEpisodeMutation.mutate(episode.id);
+                                      }
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      {(qualityEpisodes as any[]).length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No episode series found
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
@@ -1062,11 +1403,12 @@ const AdminPanel = () => {
                   <select
                     id="tokenType"
                     value={tokenType}
-                    onChange={(e) => setTokenType(e.target.value as "single" | "quality")}
+                    onChange={(e) => setTokenType(e.target.value as "single" | "quality" | "episode")}
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
                   >
                     <option value="single">Single Links API</option>
                     <option value="quality">Quality Links API</option>
+                    <option value="episode">Quality Episodes API</option>
                   </select>
                 </div>
                 <Button 

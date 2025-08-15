@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMovieLinkSchema, createShortLinkSchema, insertQualityMovieLinkSchema, createQualityShortLinkSchema } from "@shared/schema";
+import { insertMovieLinkSchema, createShortLinkSchema, insertQualityMovieLinkSchema, createQualityShortLinkSchema, insertQualityEpisodeSchema, createQualityEpisodeSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -475,6 +475,148 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== QUALITY EPISODES API ROUTES (NEW FEATURE) =====
+  
+  // Universal API endpoint for creating quality episode series
+  app.post("/api/create-quality-episode", authenticateToken, async (req, res) => {
+    try {
+      // Check if token is for episode links
+      const apiToken = (req as any).apiToken;
+      if (apiToken.tokenType !== "episode") {
+        return res.status(403).json({ error: "This token is not authorized for episode creation" });
+      }
+
+      const result = createQualityEpisodeSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: result.error.issues 
+        });
+      }
+      
+      const { seriesName, startFromEpisode, episodes } = result.data;
+      
+      // Generate unique short ID
+      let shortId: string;
+      let attempts = 0;
+      do {
+        shortId = generateShortId();
+        const existing = await storage.getQualityEpisodeByShortId(shortId);
+        if (!existing) break;
+        attempts++;
+      } while (attempts < 10);
+      
+      if (attempts >= 10) {
+        return res.status(500).json({ error: "Unable to generate unique short ID" });
+      }
+      
+      // Create the quality episode series with JSON-serialized episodes
+      const qualityEpisode = await storage.createQualityEpisode({
+        seriesName,
+        shortId,
+        startFromEpisode,
+        episodes: JSON.stringify(episodes),
+        adsEnabled: true, // API-created episodes always have ads enabled
+      });
+      
+      // Return the short URL
+      const shortUrl = `${req.protocol}://${req.get('host')}/e/${shortId}`;
+      res.status(201).json({ 
+        shortUrl,
+        shortId,
+        seriesName,
+        startFromEpisode,
+        episodeCount: episodes.length
+      });
+    } catch (error) {
+      console.error("Error creating quality episode series:", error);
+      res.status(500).json({ error: "Failed to create quality episode series" });
+    }
+  });
+
+  // Get all quality episodes
+  app.get("/api/quality-episodes", async (req, res) => {
+    try {
+      const episodes = await storage.getQualityEpisodes();
+      res.json(episodes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quality episodes" });
+    }
+  });
+
+  // Create a new quality episode series (Admin Panel)
+  app.post("/api/quality-episodes", async (req, res) => {
+    try {
+      const result = insertQualityEpisodeSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid data", details: result.error });
+      }
+      
+      const qualityEpisode = await storage.createQualityEpisode(result.data);
+      res.status(201).json(qualityEpisode);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create quality episode series" });
+    }
+  });
+
+  // Get quality episode series by short ID
+  app.get("/api/quality-episodes/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      const episode = await storage.getQualityEpisodeByShortId(shortId);
+      
+      if (!episode) {
+        return res.status(404).json({ error: "Quality episode series not found" });
+      }
+      
+      res.json(episode);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quality episode series" });
+    }
+  });
+
+  // Update quality episode series views
+  app.patch("/api/quality-episodes/:shortId/views", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      await storage.updateQualityEpisodeViews(shortId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update views" });
+    }
+  });
+
+  // Update quality episode series
+  app.patch("/api/quality-episodes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      const updates = req.body;
+      const updatedEpisode = await storage.updateQualityEpisode(id, updates);
+      res.json(updatedEpisode);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update quality episode series" });
+    }
+  });
+
+  // Delete a quality episode series
+  app.delete("/api/quality-episodes/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      await storage.deleteQualityEpisode(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete quality episode series" });
+    }
+  });
+
   // Helper function to get client IP address
   const getClientIP = (req: any) => {
     return req.headers['x-forwarded-for']?.split(',')[0] || 
@@ -484,7 +626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
            'unknown';
   };
 
-  // Redirect route for short URLs - handle both single and quality movie links
+  // Redirect route for short URLs - handle single and quality movie links
   app.get("/m/:shortId", async (req, res) => {
     try {
       const { shortId } = req.params;
@@ -536,6 +678,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.redirect(`/redirect?link=${encodedLinkData}`);
     } catch (error) {
       console.error("Error in redirect route:", error);
+      res.redirect("/redirect?error=expired");
+    }
+  });
+
+  // Redirect route for quality episode series URLs (/e/)
+  app.get("/e/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      const clientIP = getClientIP(req);
+      
+      // Find the quality episode series
+      let qualityEpisode = await storage.getQualityEpisodeByShortId(shortId);
+      
+      if (!qualityEpisode) {
+        // For expired/missing episodes, redirect to redirect page with error parameter
+        return res.redirect("/redirect?error=expired");
+      }
+
+      // Check if this IP has seen ads for this shortId in the last 5 minutes
+      const hasSeenAd = await storage.hasSeenAd(clientIP, shortId, "episode");
+
+      const linkData: any = {
+        seriesName: (qualityEpisode as any).series_name || qualityEpisode.seriesName,
+        shortId: (qualityEpisode as any).short_id || qualityEpisode.shortId,
+        adsEnabled: (qualityEpisode as any).ads_enabled || qualityEpisode.adsEnabled,
+        linkType: "episode",
+        skipTimer: hasSeenAd, // Skip timer if user has seen ad recently
+        startFromEpisode: (qualityEpisode as any).start_from_episode || qualityEpisode.startFromEpisode,
+        episodes: JSON.parse((qualityEpisode as any).episodes || qualityEpisode.episodes)
+      };
+
+      // Encode link data as URL parameter
+      const encodedLinkData = encodeURIComponent(JSON.stringify(linkData));
+      res.redirect(`/redirect?link=${encodedLinkData}`);
+    } catch (error) {
+      console.error("Error in episode redirect route:", error);
       res.redirect("/redirect?error=expired");
     }
   });
