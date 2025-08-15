@@ -87,6 +87,14 @@ const AdminPanel = () => {
     }
   }, [setLocation]);
 
+  // Update episode numbers when startFromEpisode changes
+  useEffect(() => {
+    setEpisodes(prev => prev.map((episode, index) => ({
+      ...episode,
+      episodeNumber: startFromEpisode + index
+    })));
+  }, [startFromEpisode]);
+
   // Fetch movie links from API
   const { data: movieLinks = [], isLoading } = useQuery({
     queryKey: ["/api/movie-links"],
@@ -1539,9 +1547,10 @@ const AdminPanel = () => {
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold mb-4">API Usage Instructions</h3>
                 <Tabs defaultValue="single-api" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="single-api">Single Links API</TabsTrigger>
                     <TabsTrigger value="quality-api">Quality Links API</TabsTrigger>
+                    <TabsTrigger value="episode-api">Episode Series API</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="single-api" className="space-y-4 text-sm">
@@ -1610,6 +1619,54 @@ const AdminPanel = () => {
     "720p": "http://720p-download-link.com",
     "1080p": "http://1080p-download-link.com"
   },
+  "adsEnabled": true
+}`}
+                      </pre>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="episode-api" className="space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-2">Endpoint:</h4>
+                      <code className="bg-muted px-2 py-1 rounded">POST /api/create-quality-episode-link</code>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Headers:</h4>
+                      <code className="bg-muted px-2 py-1 rounded">Authorization: Bearer YOUR_EPISODE_TOKEN_HERE</code>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Request Body:</h4>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+{`{
+  "seriesName": "Series Title",
+  "startFromEpisode": 1,
+  "episodes": [
+    {
+      "episodeNumber": 1,
+      "quality480p": "http://480p-episode1-link.com",
+      "quality720p": "http://720p-episode1-link.com",
+      "quality1080p": "http://1080p-episode1-link.com"
+    },
+    {
+      "episodeNumber": 2,
+      "quality480p": "http://480p-episode2-link.com",
+      "quality720p": "http://720p-episode2-link.com",
+      "quality1080p": "http://1080p-episode2-link.com"
+    }
+  ]
+}`}
+                      </pre>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Response:</h4>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+{`{
+  "success": true,
+  "shortUrl": "https://yoursite.com/e/def456",
+  "shortId": "def456",
+  "seriesName": "Series Title",
+  "startFromEpisode": 1,
+  "totalEpisodes": 2,
   "adsEnabled": true
 }`}
                       </pre>
@@ -1684,11 +1741,11 @@ const AdminPanel = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Movie Name</Label>
-                <Input value={editingLink?.movie_name || editingLink?.movieName || ""} readOnly />
+                <Input value={editingLink?.movieName || editingLink?.movie_name || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label>Short ID</Label>
-                <Input value={editingLink?.short_id || editingLink?.shortId || ""} readOnly />
+                <Input value={editingLink?.shortId || editingLink?.short_id || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editOriginalLink">Original Link</Label>
