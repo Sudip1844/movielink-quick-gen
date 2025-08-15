@@ -66,6 +66,15 @@ A movie link shortening service that allows admins to create short links for mov
     - Added tabbed API instructions section with separate tabs for Single Links API and Quality Links API
     - Quality Links API tab shows proper endpoint (/api/create-quality-short-link) with complete documentation
     - Both API instruction tabs include proper authentication headers and request/response examples
+    - Fixed quality link editing to properly remove empty quality fields from database
+    - Enhanced Available Qualities column display with dynamic quality badge showing
+  - **5-Minute Timer Skip System (2025-08-15)**: Implemented IP-based timer skip to improve user experience
+    - Added ad_view_sessions table to track IP addresses that have seen ads for specific links
+    - Users who complete the 10-second timer won't see it again for 5 minutes on the same link from same IP
+    - Prevents duplicate view counting when users return to same link within 5 minutes
+    - Improves user experience by not forcing repeated ad viewing for quality link browsing
+    - Works for both single and quality movie links with automatic cleanup of expired sessions
+    - IP-based tracking ensures fair ad viewing while allowing quality link exploration
   - **Replit Agent to Replit Migration (2025-08-13)**: Successfully migrated project to standard Replit environment
     - Removed all hardcoded admin credentials from server code and environment files
     - Admin login now exclusively managed through Supabase admin_settings table

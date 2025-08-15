@@ -1,4 +1,4 @@
-import { movieLinks, apiTokens, adminSettings, qualityMovieLinks, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings, type QualityMovieLink, type InsertQualityMovieLink } from "@shared/schema";
+import { movieLinks, apiTokens, adminSettings, qualityMovieLinks, adViewSessions, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings, type QualityMovieLink, type InsertQualityMovieLink, type AdViewSession, type InsertAdViewSession } from "@shared/schema";
 
 // Storage interface for movie links and API tokens
 export interface IStorage {
@@ -29,6 +29,11 @@ export interface IStorage {
   updateQualityMovieLinkViews(shortId: string): Promise<void>;
   updateQualityMovieLink(id: number, updates: Partial<InsertQualityMovieLink>): Promise<QualityMovieLink>;
   deleteQualityMovieLink(id: number): Promise<void>;
+  
+  // Ad View Sessions (5 minute timer skip functionality)
+  hasSeenAd(ipAddress: string, shortId: string): Promise<boolean>;
+  recordAdView(ipAddress: string, shortId: string): Promise<void>;
+  cleanupExpiredSessions(): Promise<void>;
 }
 
 // Memory storage removed - using only Supabase storage
@@ -211,6 +216,19 @@ export class DeprecatedMemStorage implements IStorage {
 
   async deleteQualityMovieLink(id: number): Promise<void> {
     this.qualityMovieLinks.delete(id);
+  }
+
+  // Ad View Sessions methods (placeholder for deprecated memory storage)
+  async hasSeenAd(ipAddress: string, shortId: string): Promise<boolean> {
+    return false; // Always show ads in memory storage
+  }
+
+  async recordAdView(ipAddress: string, shortId: string): Promise<void> {
+    // No-op in memory storage
+  }
+
+  async cleanupExpiredSessions(): Promise<void> {
+    // No-op in memory storage
   }
 }
 
@@ -490,6 +508,63 @@ export class DatabaseStorage implements IStorage {
       this.supabaseClient = supabase;
     }
     await this.supabaseClient.delete('quality_movie_links', { id });
+  }
+
+  // Ad View Sessions methods (5-minute timer skip functionality)
+  async hasSeenAd(ipAddress: string, shortId: string): Promise<boolean> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    const now = new Date();
+    const sessions = await this.supabaseClient.select('ad_view_sessions', '*', {
+      ip_address: ipAddress,
+      short_id: shortId
+    });
+    
+    // Check if there's a valid (non-expired) session
+    const validSession = sessions.find((session: any) => new Date(session.expires_at) > now);
+    return !!validSession;
+  }
+
+  async recordAdView(ipAddress: string, shortId: string): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
+    
+    // First clean up any existing sessions for this IP + shortId
+    await this.supabaseClient.delete('ad_view_sessions', {
+      ip_address: ipAddress,
+      short_id: shortId
+    });
+    
+    // Record new session
+    await this.supabaseClient.insert('ad_view_sessions', {
+      ip_address: ipAddress,
+      short_id: shortId,
+      expires_at: expiresAt.toISOString()
+    });
+  }
+
+  async cleanupExpiredSessions(): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    const now = new Date();
+    // Delete all expired sessions
+    const allSessions = await this.supabaseClient.select('ad_view_sessions');
+    const expiredSessions = allSessions.filter((session: any) => new Date(session.expires_at) <= now);
+    
+    for (const session of expiredSessions) {
+      await this.supabaseClient.delete('ad_view_sessions', { id: session.id });
+    }
   }
 }
 

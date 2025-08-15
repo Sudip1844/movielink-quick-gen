@@ -467,10 +467,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to get client IP address
+  const getClientIP = (req: any) => {
+    return req.headers['x-forwarded-for']?.split(',')[0] || 
+           req.connection?.remoteAddress || 
+           req.socket?.remoteAddress || 
+           req.ip || 
+           'unknown';
+  };
+
   // Redirect route for short URLs - handle both single and quality movie links
   app.get("/m/:shortId", async (req, res) => {
     try {
       const { shortId } = req.params;
+      const clientIP = getClientIP(req);
       
       // Try to find the link in both single and quality movie links
       let movieLink = await storage.getMovieLinkByShortId(shortId);
@@ -492,11 +502,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.redirect("/redirect?error=expired");
       }
 
+      // Check if this IP has seen ads for this shortId in the last 5 minutes
+      const hasSeenAd = await storage.hasSeenAd(clientIP, shortId);
+
       const linkData: any = {
         movieName: (link as any).movie_name || link.movieName,
         shortId: (link as any).short_id || link.shortId,
         adsEnabled: (link as any).ads_enabled || link.adsEnabled,
-        linkType
+        linkType,
+        skipTimer: hasSeenAd // Skip timer if user has seen ad recently
       };
 
       if (linkType === "quality" && qualityMovieLink) {
@@ -515,6 +529,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error in redirect route:", error);
       res.redirect("/redirect?error=expired");
+    }
+  });
+
+  // API endpoint to record ad view (called when timer completes)
+  app.post("/api/record-ad-view", async (req, res) => {
+    try {
+      const { shortId } = req.body;
+      const clientIP = getClientIP(req);
+      
+      if (!shortId) {
+        return res.status(400).json({ error: "Short ID is required" });
+      }
+
+      // Record that this IP has seen the ad for this shortId
+      await storage.recordAdView(clientIP, shortId);
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error recording ad view:", error);
+      res.status(500).json({ error: "Failed to record ad view" });
+    }
+  });
+
+  // Cleanup expired sessions periodically (could be called by a cron job)
+  app.post("/api/cleanup-expired-sessions", async (req, res) => {
+    try {
+      await storage.cleanupExpiredSessions();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error cleaning up expired sessions:", error);
+      res.status(500).json({ error: "Failed to cleanup expired sessions" });
     }
   });
 

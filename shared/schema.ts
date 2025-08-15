@@ -86,6 +86,20 @@ export const insertAdminSettingsSchema = createInsertSchema(adminSettings).omit(
   updatedAt: true,
 });
 
+// Table to track IP addresses that have seen ads to avoid repeated timers
+export const adViewSessions = pgTable("ad_view_sessions", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  ipAddress: text("ip_address").notNull(),
+  shortId: text("short_id").notNull(),
+  viewedAt: timestamp("viewed_at", { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+});
+
+export const insertAdViewSessionSchema = createInsertSchema(adViewSessions).omit({
+  id: true,
+  viewedAt: true,
+});
+
 export type InsertMovieLink = z.infer<typeof insertMovieLinkSchema>;
 export type MovieLink = typeof movieLinks.$inferSelect;
 export type InsertApiToken = z.infer<typeof insertApiTokenSchema>;
@@ -96,3 +110,5 @@ export type InsertAdminSettings = z.infer<typeof insertAdminSettingsSchema>;
 export type AdminSettings = typeof adminSettings.$inferSelect;
 export type InsertQualityMovieLink = z.infer<typeof insertQualityMovieLinkSchema>;
 export type QualityMovieLink = typeof qualityMovieLinks.$inferSelect;
+export type InsertAdViewSession = z.infer<typeof insertAdViewSessionSchema>;
+export type AdViewSession = typeof adViewSessions.$inferSelect;

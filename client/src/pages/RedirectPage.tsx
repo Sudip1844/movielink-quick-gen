@@ -29,6 +29,16 @@ const RedirectPage = () => {
     },
   });
 
+  // Record ad view mutation (called when timer completes)
+  const recordAdViewMutation = useMutation({
+    mutationFn: async (shortId: string) => {
+      return apiRequest(`/api/record-ad-view`, {
+        method: "POST",
+        body: JSON.stringify({ shortId }),
+      });
+    },
+  });
+
   useEffect(() => {
     // Parse URL parameters to get movie data
     const urlParams = new URLSearchParams(window.location.search);
@@ -55,10 +65,12 @@ const RedirectPage = () => {
             updateSingleViewsMutation.mutate(parsedData.shortId);
           }
 
-          // If ads are disabled, redirect immediately
-          if (!parsedData.adsEnabled) {
+          // If ads are disabled OR user has already seen ad, skip timer
+          if (!parsedData.adsEnabled || parsedData.skipTimer) {
             if (parsedData.linkType === "quality") {
-              // For quality links without ads, redirect to a no-ads version
+              // For quality links without ads or with timer skip, show quality options
+              setCountdown(0);
+              setShowContinueSection(true);
               setIsLoading(false);
               return;
             } else {
@@ -77,17 +89,18 @@ const RedirectPage = () => {
 
   // Timer countdown effect
   useEffect(() => {
-    if (!movieData?.adsEnabled) return;
+    if (!movieData?.adsEnabled || movieData?.skipTimer) return;
 
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else {
-      // Timer finished - show scroll button and continue section
+      // Timer finished - record ad view and show continue section
+      recordAdViewMutation.mutate(movieData.shortId);
       setShowScrollButton(true);
       setShowContinueSection(true);
     }
-  }, [countdown, movieData?.adsEnabled]);
+  }, [countdown, movieData?.adsEnabled, movieData?.skipTimer]);
 
   const handleContinue = (link: string) => {
     window.location.href = link;
