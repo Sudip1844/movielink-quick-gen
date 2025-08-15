@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Copy, LogOut, Trash2, Edit } from "lucide-react";
 import {
@@ -494,9 +494,9 @@ const AdminPanel = () => {
     }
   };
 
-  const handleEditLink = (link: MovieLink) => {
+  const handleEditLink = (link: any) => {
     setEditingLink(link);
-    setEditOriginalLink(link.originalLink);
+    setEditOriginalLink(link.original_link || link.originalLink || "");
     setIsEditDialogOpen(true);
   };
 
@@ -891,16 +891,16 @@ const AdminPanel = () => {
                         <TableBody>
                           {filteredLinks.map((link) => (
                             <TableRow key={link.id}>
-                              <TableCell className="font-medium">{link.movie_name}</TableCell>
-                              <TableCell className="hidden lg:table-cell max-w-64 truncate" title={link.original_link}>{link.original_link}</TableCell>
+                              <TableCell className="font-medium">{link.movie_name || link.movieName}</TableCell>
+                              <TableCell className="hidden lg:table-cell max-w-64 truncate" title={link.original_link || link.originalLink}>{link.original_link || link.originalLink}</TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <code className="text-sm">/m/{link.short_id}</code>
+                                  <code className="text-sm">/m/{link.short_id || link.shortId}</code>
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                      const fullUrl = `${window.location.origin}/m/${link.short_id}`;
+                                      const fullUrl = `${window.location.origin}/m/${link.short_id || link.shortId}`;
                                       navigator.clipboard.writeText(fullUrl);
                                       toast({
                                         title: "Copied",
@@ -970,12 +970,12 @@ const AdminPanel = () => {
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <code className="text-sm">/m/{link.short_id}</code>
+                                  <code className="text-sm">/m/{link.short_id || link.shortId}</code>
                                   <Button
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
-                                      const fullUrl = `${window.location.origin}/m/${link.short_id}`;
+                                      const fullUrl = `${window.location.origin}/m/${link.short_id || link.shortId}`;
                                       navigator.clipboard.writeText(fullUrl);
                                       toast({
                                         title: "Copied",
@@ -1277,11 +1277,11 @@ const AdminPanel = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Movie Name</Label>
-                <Input value={editingLink?.movieName || ""} readOnly />
+                <Input value={editingLink?.movie_name || editingLink?.movieName || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label>Short ID</Label>
-                <Input value={editingLink?.shortId || ""} readOnly />
+                <Input value={editingLink?.short_id || editingLink?.shortId || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editOriginalLink">Original Link</Label>
