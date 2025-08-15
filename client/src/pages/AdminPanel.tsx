@@ -963,9 +963,9 @@ const AdminPanel = () => {
                               <TableCell className="font-medium">{link.movie_name}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
-                                  {link.quality480p && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">480p</span>}
-                                  {link.quality720p && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">720p</span>}
-                                  {link.quality1080p && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">1080p</span>}
+                                  {(link.quality480p || link.quality_480p) && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">480p</span>}
+                                  {(link.quality720p || link.quality_720p) && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">720p</span>}
+                                  {(link.quality1080p || link.quality_1080p) && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">1080p</span>}
                                 </div>
                               </TableCell>
                               <TableCell>
