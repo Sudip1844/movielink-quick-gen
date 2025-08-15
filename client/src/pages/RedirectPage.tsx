@@ -60,8 +60,8 @@ const RedirectPage = () => {
         if (!viewsUpdated.current) {
           viewsUpdated.current = true;
           
-          // Only update views if user hasn't seen this link recently (skipTimer = false means new view)
-          if (!parsedData.skipTimer) {
+          // Only update views if ads are enabled AND user hasn't seen this link recently
+          if (parsedData.adsEnabled && !parsedData.skipTimer) {
             if (parsedData.linkType === "quality") {
               updateQualityViewsMutation.mutate(parsedData.shortId);
             } else {

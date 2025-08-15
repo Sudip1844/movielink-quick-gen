@@ -309,6 +309,21 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
+  async updateMovieLinkFull(id: number, originalLink: string, adsEnabled: boolean): Promise<MovieLink> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.update('movie_links', { 
+      original_link: originalLink,
+      ads_enabled: adsEnabled 
+    }, { id });
+    if (!result) {
+      throw new Error("Movie link not found");
+    }
+    return result;
+  }
+
   // API Token methods
   async createApiToken(insertToken: InsertApiToken): Promise<ApiToken> {
     if (!this.supabaseClient) {

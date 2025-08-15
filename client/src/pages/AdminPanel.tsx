@@ -40,6 +40,7 @@ const AdminPanel = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [editingLink, setEditingLink] = useState<MovieLink | null>(null);
   const [editOriginalLink, setEditOriginalLink] = useState("");
+  const [editAdsEnabled, setEditAdsEnabled] = useState(true);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   
   // API Token states
@@ -123,10 +124,14 @@ const AdminPanel = () => {
 
   // Update movie link mutation
   const updateMovieLinkMutation = useMutation({
-    mutationFn: async ({ id, originalLink }: { id: number; originalLink: string }) => {
+    mutationFn: async ({ id, originalLink, adsEnabled }: { id: number; originalLink: string; adsEnabled?: boolean }) => {
+      const updateData: any = { originalLink };
+      if (adsEnabled !== undefined) {
+        updateData.adsEnabled = adsEnabled;
+      }
       return apiRequest(`/api/movie-links/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ originalLink }),
+        body: JSON.stringify(updateData),
       });
     },
     onSuccess: () => {
@@ -503,6 +508,7 @@ const AdminPanel = () => {
   const handleEditLink = (link: any) => {
     setEditingLink(link);
     setEditOriginalLink(link.original_link || link.originalLink || "");
+    setEditAdsEnabled(link.ads_enabled !== undefined ? link.ads_enabled : link.adsEnabled !== undefined ? link.adsEnabled : true);
     setIsEditDialogOpen(true);
   };
 
@@ -520,6 +526,7 @@ const AdminPanel = () => {
       await updateMovieLinkMutation.mutateAsync({
         id: editingLink.id,
         originalLink: editOriginalLink.trim(),
+        adsEnabled: editAdsEnabled,
       });
       toast({
         title: "Updated",
@@ -1332,11 +1339,11 @@ const AdminPanel = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Movie Name</Label>
-                <Input value={editingLink?.movie_name || editingLink?.movieName || ""} readOnly />
+                <Input value={editingLink?.movieName || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label>Short ID</Label>
-                <Input value={editingLink?.short_id || editingLink?.shortId || ""} readOnly />
+                <Input value={editingLink?.shortId || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editOriginalLink">Original Link</Label>
@@ -1346,6 +1353,16 @@ const AdminPanel = () => {
                   onChange={(e) => setEditOriginalLink(e.target.value)}
                   placeholder="Enter new original movie link"
                 />
+              </div>
+              <div className="flex items-center space-x-2 pb-2">
+                <Switch
+                  id="editAdsEnabled"
+                  checked={editAdsEnabled}
+                  onCheckedChange={setEditAdsEnabled}
+                />
+                <Label htmlFor="editAdsEnabled" className="text-sm">
+                  Enable Ads
+                </Label>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>

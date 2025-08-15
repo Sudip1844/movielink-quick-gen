@@ -270,7 +270,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update movie link original URL
+  // Update movie link original URL and/or ads enabled status
   app.patch("/api/movie-links/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
@@ -278,12 +278,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid ID" });
       }
       
-      const { originalLink } = req.body;
+      const { originalLink, adsEnabled } = req.body;
       if (!originalLink || typeof originalLink !== "string") {
         return res.status(400).json({ error: "Original link is required" });
       }
       
-      const updatedLink = await storage.updateMovieLinkOriginalUrl(id, originalLink);
+      let updatedLink;
+      if (adsEnabled !== undefined) {
+        // Update both originalLink and adsEnabled using a comprehensive update method
+        updatedLink = await storage.updateMovieLinkFull(id, originalLink, adsEnabled);
+      } else {
+        // Update only originalLink (backward compatibility)
+        updatedLink = await storage.updateMovieLinkOriginalUrl(id, originalLink);
+      }
+      
       res.json(updatedLink);
     } catch (error) {
       res.status(500).json({ error: "Failed to update movie link" });
