@@ -43,7 +43,25 @@ CREATE TABLE api_tokens (
     last_used TIMESTAMP WITH TIME ZONE
 );
 
--- 5. Create indexes for better performance
+-- 5. Create admin_settings table for login credentials
+CREATE TABLE admin_settings (
+    id BIGSERIAL PRIMARY KEY,
+    admin_id TEXT NOT NULL UNIQUE,
+    admin_password TEXT NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+);
+
+-- 6. Create ad_view_sessions table for IP-based timer skip system (5-minute skip)
+CREATE TABLE ad_view_sessions (
+    id BIGSERIAL PRIMARY KEY,
+    ip_address TEXT NOT NULL,
+    short_id TEXT NOT NULL,
+    link_type TEXT NOT NULL DEFAULT 'single', -- 'single' or 'quality'
+    viewed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (NOW() + INTERVAL '5 minutes')
+);
+
+-- 7. Create indexes for better performance (after all tables are created)
 CREATE INDEX idx_movie_links_short_id ON movie_links(short_id);
 CREATE INDEX idx_movie_links_date_added ON movie_links(date_added DESC);
 CREATE INDEX idx_quality_movie_links_short_id ON quality_movie_links(short_id);
@@ -53,24 +71,6 @@ CREATE INDEX idx_api_tokens_active ON api_tokens(is_active);
 CREATE INDEX idx_ad_view_sessions_ip ON ad_view_sessions(ip_address);
 CREATE INDEX idx_ad_view_sessions_expires ON ad_view_sessions(expires_at);
 CREATE INDEX idx_ad_view_sessions_short_id ON ad_view_sessions(short_id);
-
--- 6. Create admin_settings table for login credentials
-CREATE TABLE admin_settings (
-    id BIGSERIAL PRIMARY KEY,
-    admin_id TEXT NOT NULL UNIQUE,
-    admin_password TEXT NOT NULL,
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-);
-
--- 7. Create ad_view_sessions table for IP-based timer skip system (5-minute skip)
-CREATE TABLE ad_view_sessions (
-    id BIGSERIAL PRIMARY KEY,
-    ip_address TEXT NOT NULL,
-    short_id TEXT NOT NULL,
-    link_type TEXT NOT NULL DEFAULT 'single', -- 'single' or 'quality'
-    viewed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    expires_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (NOW() + INTERVAL '5 minutes')
-);
 
 -- Create unique constraint to prevent duplicate sessions for same IP and link
 CREATE UNIQUE INDEX idx_ad_view_sessions_unique ON ad_view_sessions(ip_address, short_id, link_type);
