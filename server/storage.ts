@@ -471,9 +471,10 @@ export class DatabaseStorage implements IStorage {
     
     const updateData: any = {};
     if (updates.movieName !== undefined) updateData.movie_name = updates.movieName;
-    if (updates.quality480p !== undefined) updateData.quality_480p = updates.quality480p;
-    if (updates.quality720p !== undefined) updateData.quality_720p = updates.quality720p;
-    if (updates.quality1080p !== undefined) updateData.quality_1080p = updates.quality1080p;
+    // Handle empty strings as null to properly remove links
+    if (updates.quality480p !== undefined) updateData.quality_480p = updates.quality480p || null;
+    if (updates.quality720p !== undefined) updateData.quality_720p = updates.quality720p || null;
+    if (updates.quality1080p !== undefined) updateData.quality_1080p = updates.quality1080p || null;
     if (updates.adsEnabled !== undefined) updateData.ads_enabled = updates.adsEnabled;
     
     const result = await this.supabaseClient.update('quality_movie_links', updateData, { id });

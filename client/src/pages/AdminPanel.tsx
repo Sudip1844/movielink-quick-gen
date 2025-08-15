@@ -324,10 +324,12 @@ const AdminPanel = () => {
     }
 
     try {
-      const qualities: any = {};
-      if (editQuality480p.trim()) qualities.quality480p = editQuality480p.trim();
-      if (editQuality720p.trim()) qualities.quality720p = editQuality720p.trim();
-      if (editQuality1080p.trim()) qualities.quality1080p = editQuality1080p.trim();
+      // Always send all quality fields to ensure proper updates (including removal)
+      const qualities: any = {
+        quality480p: editQuality480p.trim() || null,
+        quality720p: editQuality720p.trim() || null,
+        quality1080p: editQuality1080p.trim() || null,
+      };
 
       await updateQualityMovieLinkMutation.mutateAsync({
         id: editingQualityLink.id,
