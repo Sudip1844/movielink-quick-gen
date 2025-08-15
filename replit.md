@@ -115,6 +115,11 @@ A movie link shortening service that allows admins to create short links for mov
     - Updated redirect routes and RedirectPage component to support database-backed timer skip system
     - Complete SQL schema includes proper indexes, RLS policies, and cleanup functions for optimal performance
     - IP-based sessions now persist across server restarts ensuring consistent user experience
+    - **Views Count Duplicate Protection (2025-08-15)**: Enhanced view counting with IP-based duplicate protection
+      - Views count only increases on first visit from each IP address within 5-minute window
+      - Prevents artificial view inflation when users revisit same link multiple times
+      - Same IP visiting same link within 5 minutes: timer skips + no additional view count
+      - System maintains accurate view statistics while improving user experience
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management

@@ -56,13 +56,17 @@ const RedirectPage = () => {
         const parsedData = JSON.parse(decodeURIComponent(linkData));
         setMovieData(parsedData);
         
-        // Update view count only once when component loads
+        // Update view count only if user hasn't seen ad recently (IP-based duplicate protection)
         if (!viewsUpdated.current) {
           viewsUpdated.current = true;
-          if (parsedData.linkType === "quality") {
-            updateQualityViewsMutation.mutate(parsedData.shortId);
-          } else {
-            updateSingleViewsMutation.mutate(parsedData.shortId);
+          
+          // Only update views if user hasn't seen this link recently (skipTimer = false means new view)
+          if (!parsedData.skipTimer) {
+            if (parsedData.linkType === "quality") {
+              updateQualityViewsMutation.mutate(parsedData.shortId);
+            } else {
+              updateSingleViewsMutation.mutate(parsedData.shortId);
+            }
           }
 
           // If ads are disabled OR user has already seen ad, skip timer
