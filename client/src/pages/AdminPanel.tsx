@@ -44,10 +44,18 @@ const AdminPanel = () => {
   
   // API Token states
   const [tokenName, setTokenName] = useState("");
+  const [tokenType, setTokenType] = useState<"single" | "quality">("single");
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [generatedToken, setGeneratedToken] = useState("");
   const [editingToken, setEditingToken] = useState<any | null>(null);
   const [isEditTokenDialogOpen, setIsEditTokenDialogOpen] = useState(false);
+  
+  // Quality link editing states
+  const [editingQualityLink, setEditingQualityLink] = useState<any | null>(null);
+  const [isEditQualityDialogOpen, setIsEditQualityDialogOpen] = useState(false);
+  const [editQuality480p, setEditQuality480p] = useState("");
+  const [editQuality720p, setEditQuality720p] = useState("");
+  const [editQuality1080p, setEditQuality1080p] = useState("");
   
   // Admin Settings states removed - credentials now managed only via Supabase
 
@@ -131,7 +139,7 @@ const AdminPanel = () => {
 
   // Create API token mutation
   const createTokenMutation = useMutation({
-    mutationFn: async (data: { tokenName: string }) => {
+    mutationFn: async (data: { tokenName: string; tokenType: string }) => {
       return apiRequest("/api/tokens", {
         method: "POST",
         body: JSON.stringify(data),
@@ -142,6 +150,7 @@ const AdminPanel = () => {
       setGeneratedToken(data.tokenValue || data.token_value || "");
       setIsTokenDialogOpen(true);
       setTokenName("");
+      setTokenType("single");
       toast({
         title: "Token Created",
         description: "API token generated successfully! Copy it now.",
@@ -169,6 +178,31 @@ const AdminPanel = () => {
       setTimeout(() => {
         queryClient.refetchQueries({ queryKey: ["/api/tokens"] });
       }, 100);
+    },
+  });
+
+  // Delete quality movie link mutation
+  const deleteQualityMovieLinkMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/quality-movie-links/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-movie-links"] });
+    },
+  });
+
+  // Update quality movie link mutation
+  const updateQualityMovieLinkMutation = useMutation({
+    mutationFn: async ({ id, qualities }: { id: number; qualities: any }) => {
+      return apiRequest(`/api/quality-movie-links/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(qualities),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-movie-links"] });
     },
   });
 
@@ -208,6 +242,7 @@ const AdminPanel = () => {
     try {
       await createTokenMutation.mutateAsync({
         tokenName: tokenName.trim(),
+        tokenType,
       });
     } catch (error) {
       toast({
@@ -250,6 +285,76 @@ const AdminPanel = () => {
         toast({
           title: "Error",
           description: "Failed to delete token",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleEditQualityLink = (link: any) => {
+    setEditingQualityLink(link);
+    setEditQuality480p(link.quality480p || "");
+    setEditQuality720p(link.quality720p || "");
+    setEditQuality1080p(link.quality1080p || "");
+    setIsEditQualityDialogOpen(true);
+  };
+
+  const handleUpdateQualityLink = async () => {
+    if (!editingQualityLink) {
+      toast({
+        title: "Error",
+        description: "No link selected for editing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if at least one quality link is provided
+    if (!editQuality480p.trim() && !editQuality720p.trim() && !editQuality1080p.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one quality link",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const qualities: any = {};
+      if (editQuality480p.trim()) qualities.quality480p = editQuality480p.trim();
+      if (editQuality720p.trim()) qualities.quality720p = editQuality720p.trim();
+      if (editQuality1080p.trim()) qualities.quality1080p = editQuality1080p.trim();
+
+      await updateQualityMovieLinkMutation.mutateAsync({
+        id: editingQualityLink.id,
+        qualities,
+      });
+      toast({
+        title: "Updated",
+        description: "Quality link updated successfully!",
+      });
+      setIsEditQualityDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update quality link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteQualityLink = async (id: number) => {
+    if (confirm("Are you sure you want to delete this quality link?")) {
+      try {
+        await deleteQualityMovieLinkMutation.mutateAsync(id);
+        toast({
+          title: "Deleted",
+          description: "Quality link deleted successfully!",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete quality link",
           variant: "destructive",
         });
       }
@@ -476,7 +581,10 @@ const AdminPanel = () => {
     .reduce((sum, link) => sum + (link?.views || 0), 0);
   
   // Get the most recent 5 links for the recent links section (combine both types)
-  const recentLinks = allLinks
+  const recentLinks = [
+    ...((movieLinks as any[]) || []).map((link: any) => ({ ...link, linkType: 'single' })),
+    ...((qualityMovieLinks as any[]) || []).map((link: any) => ({ ...link, linkType: 'quality' }))
+  ]
     .slice()
     .sort((a, b) => {
       const dateA = a?.date_added ? new Date(a.date_added).getTime() : 0;
@@ -675,16 +783,16 @@ const AdminPanel = () => {
                 ) : (
                   <div className="space-y-3">
                     {recentLinks.map((link) => (
-                      <div key={`${link.quality480p || link.quality720p || link.quality1080p ? 'quality' : 'single'}-${link.id}`} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                      <div key={`${link.linkType}-${link.id}`} className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <p className="font-medium truncate">{link.movie_name}</p>
                             <span className={`text-xs px-2 py-1 rounded-full ${
-                              link.quality480p || link.quality720p || link.quality1080p 
+                              link.linkType === 'quality'
                                 ? 'bg-purple-100 text-purple-800' 
                                 : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {link.quality480p || link.quality720p || link.quality1080p ? 'Quality' : 'Single'}
+                              {link.linkType === 'quality' ? 'Quality' : 'Single'}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground truncate">
@@ -884,18 +992,16 @@ const AdminPanel = () => {
                               <TableCell>
                                 <div className="flex gap-2">
                                   <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditQualityLink(link)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
                                     variant="destructive"
                                     size="sm"
-                                    onClick={() => {
-                                      // Add delete quality link handler
-                                      if (confirm("Are you sure you want to delete this quality link?")) {
-                                        // Will implement delete quality link mutation
-                                        toast({
-                                          title: "Delete functionality",
-                                          description: "Quality link deletion will be implemented",
-                                        });
-                                      }
-                                    }}
+                                    onClick={() => handleDeleteQualityLink(link.id)}
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </Button>
@@ -931,6 +1037,18 @@ const AdminPanel = () => {
                     onChange={(e) => setTokenName(e.target.value)}
                     placeholder="Enter token name (e.g., Telegram Bot Token)"
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tokenType">Token Type</Label>
+                  <select
+                    id="tokenType"
+                    value={tokenType}
+                    onChange={(e) => setTokenType(e.target.value as "single" | "quality")}
+                    className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                  >
+                    <option value="single">Single Links API</option>
+                    <option value="quality">Quality Links API</option>
+                  </select>
                 </div>
                 <Button 
                   onClick={handleGenerateToken}
@@ -1183,6 +1301,63 @@ const AdminPanel = () => {
                   disabled={updateMovieLinkMutation.isPending}
                 >
                   {updateMovieLinkMutation.isPending ? "Updating..." : "Update"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Quality Link Dialog */}
+        <Dialog open={isEditQualityDialogOpen} onOpenChange={setIsEditQualityDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Quality Movie Link</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Movie Name</Label>
+                <Input value={editingQualityLink?.movie_name || ""} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label>Short ID</Label>
+                <Input value={editingQualityLink?.short_id || ""} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editQuality480p">480p Download Link</Label>
+                <Input
+                  id="editQuality480p"
+                  value={editQuality480p}
+                  onChange={(e) => setEditQuality480p(e.target.value)}
+                  placeholder="Enter 480p download link (optional)"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editQuality720p">720p Download Link</Label>
+                <Input
+                  id="editQuality720p"
+                  value={editQuality720p}
+                  onChange={(e) => setEditQuality720p(e.target.value)}
+                  placeholder="Enter 720p download link (optional)"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editQuality1080p">1080p Download Link</Label>
+                <Input
+                  id="editQuality1080p"
+                  value={editQuality1080p}
+                  onChange={(e) => setEditQuality1080p(e.target.value)}
+                  placeholder="Enter 1080p download link (optional)"
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setIsEditQualityDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleUpdateQualityLink}
+                  disabled={updateQualityMovieLinkMutation.isPending}
+                >
+                  {updateQualityMovieLinkMutation.isPending ? "Updating..." : "Update"}
                 </Button>
               </div>
             </div>
