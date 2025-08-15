@@ -293,9 +293,9 @@ const AdminPanel = () => {
 
   const handleEditQualityLink = (link: any) => {
     setEditingQualityLink(link);
-    setEditQuality480p(link.quality480p || "");
-    setEditQuality720p(link.quality720p || "");
-    setEditQuality1080p(link.quality1080p || "");
+    setEditQuality480p(link.quality480p || link.quality_480p || "");
+    setEditQuality720p(link.quality720p || link.quality_720p || "");
+    setEditQuality1080p(link.quality1080p || link.quality_1080p || "");
     setIsEditQualityDialogOpen(true);
   };
 
@@ -1177,27 +1177,33 @@ const AdminPanel = () => {
             <Card>
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold mb-4">API Usage Instructions</h3>
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <h4 className="font-medium mb-2">Endpoint:</h4>
-                    <code className="bg-muted px-2 py-1 rounded">POST /api/create-short-link</code>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Headers:</h4>
-                    <code className="bg-muted px-2 py-1 rounded">Authorization: Bearer YOUR_TOKEN_HERE</code>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Request Body:</h4>
-                    <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+                <Tabs defaultValue="single-api" className="w-full">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="single-api">Single Links API</TabsTrigger>
+                    <TabsTrigger value="quality-api">Quality Links API</TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="single-api" className="space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-2">Endpoint:</h4>
+                      <code className="bg-muted px-2 py-1 rounded">POST /api/create-short-link</code>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Headers:</h4>
+                      <code className="bg-muted px-2 py-1 rounded">Authorization: Bearer YOUR_SINGLE_TOKEN_HERE</code>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Request Body:</h4>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
 {`{
   "movieName": "Movie Title",
   "originalLink": "http://original-download-link.com"
 }`}
-                    </pre>
-                  </div>
-                  <div>
-                    <h4 className="font-medium mb-2">Response:</h4>
-                    <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+                      </pre>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Response:</h4>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
 {`{
   "success": true,
   "shortUrl": "https://yoursite.com/m/abc123",
@@ -1206,9 +1212,49 @@ const AdminPanel = () => {
   "originalLink": "http://original-download-link.com",
   "adsEnabled": true
 }`}
-                    </pre>
-                  </div>
-                </div>
+                      </pre>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="quality-api" className="space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-2">Endpoint:</h4>
+                      <code className="bg-muted px-2 py-1 rounded">POST /api/create-quality-short-link</code>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Headers:</h4>
+                      <code className="bg-muted px-2 py-1 rounded">Authorization: Bearer YOUR_QUALITY_TOKEN_HERE</code>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Request Body:</h4>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+{`{
+  "movieName": "Movie Title",
+  "quality480p": "http://480p-download-link.com",
+  "quality720p": "http://720p-download-link.com",
+  "quality1080p": "http://1080p-download-link.com"
+}`}
+                      </pre>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Response:</h4>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+{`{
+  "success": true,
+  "shortUrl": "https://yoursite.com/m/xyz789",
+  "shortId": "xyz789",
+  "movieName": "Movie Title",
+  "qualities": {
+    "480p": "http://480p-download-link.com",
+    "720p": "http://720p-download-link.com",
+    "1080p": "http://1080p-download-link.com"
+  },
+  "adsEnabled": true
+}`}
+                      </pre>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </TabsContent>

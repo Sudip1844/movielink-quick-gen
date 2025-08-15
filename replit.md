@@ -60,6 +60,12 @@ A movie link shortening service that allows admins to create short links for mov
     - API token management with full edit/delete functionality via Supabase
     - Enhanced API token status toggle (active/inactive) with conditional delete permissions
     - All application data now 100% stored in Supabase with no local memory dependencies
+  - **Enhanced Edit Functionality & API Documentation (2025-08-15)**: Fixed quality links editing and improved API instructions
+    - Fixed quality links edit dialog to properly display existing quality links (480p, 720p, 1080p) in input fields
+    - Enhanced field name compatibility for both camelCase and snake_case data formats
+    - Added tabbed API instructions section with separate tabs for Single Links API and Quality Links API
+    - Quality Links API tab shows proper endpoint (/api/create-quality-short-link) with complete documentation
+    - Both API instruction tabs include proper authentication headers and request/response examples
   - **Replit Agent to Replit Migration (2025-08-13)**: Successfully migrated project to standard Replit environment
     - Removed all hardcoded admin credentials from server code and environment files
     - Admin login now exclusively managed through Supabase admin_settings table
