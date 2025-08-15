@@ -503,7 +503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if this IP has seen ads for this shortId in the last 5 minutes
-      const hasSeenAd = await storage.hasSeenAd(clientIP, shortId);
+      const hasSeenAd = await storage.hasSeenAd(clientIP, shortId, linkType);
 
       const linkData: any = {
         movieName: (link as any).movie_name || link.movieName,
@@ -535,7 +535,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // API endpoint to record ad view (called when timer completes)
   app.post("/api/record-ad-view", async (req, res) => {
     try {
-      const { shortId } = req.body;
+      const { shortId, linkType } = req.body;
       const clientIP = getClientIP(req);
       
       if (!shortId) {
@@ -543,7 +543,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Record that this IP has seen the ad for this shortId
-      await storage.recordAdView(clientIP, shortId);
+      await storage.recordAdView(clientIP, shortId, linkType || 'single');
       
       res.json({ success: true });
     } catch (error) {

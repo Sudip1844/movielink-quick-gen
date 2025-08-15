@@ -108,6 +108,13 @@ A movie link shortening service that allows admins to create short links for mov
     - Database section now features separate tabs for Single Links and Quality Links management
     - All existing functionality preserved while adding extensive quality-based link capabilities
     - Project successfully runs in standard Replit environment with complete feature parity
+  - **IP-Based Timer Skip Database Integration (2025-08-15)**: Migrated ad view sessions from memory to Supabase database
+    - Added `ad_view_sessions` table to Supabase schema for persistent IP-based timer skip tracking
+    - Users who complete 10-second timer skip it for 5 minutes on same link from same IP address
+    - Enhanced storage layer with hasSeenAd, recordAdView, and cleanupExpiredSessions methods
+    - Updated redirect routes and RedirectPage component to support database-backed timer skip system
+    - Complete SQL schema includes proper indexes, RLS policies, and cleanup functions for optimal performance
+    - IP-based sessions now persist across server restarts ensuring consistent user experience
 
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management

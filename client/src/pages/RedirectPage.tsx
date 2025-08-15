@@ -31,10 +31,10 @@ const RedirectPage = () => {
 
   // Record ad view mutation (called when timer completes)
   const recordAdViewMutation = useMutation({
-    mutationFn: async (shortId: string) => {
+    mutationFn: async (data: { shortId: string; linkType: string }) => {
       return apiRequest(`/api/record-ad-view`, {
         method: "POST",
-        body: JSON.stringify({ shortId }),
+        body: JSON.stringify(data),
       });
     },
   });
@@ -96,7 +96,10 @@ const RedirectPage = () => {
       return () => clearTimeout(timer);
     } else {
       // Timer finished - record ad view and show continue section
-      recordAdViewMutation.mutate(movieData.shortId);
+      recordAdViewMutation.mutate({ 
+        shortId: movieData.shortId, 
+        linkType: movieData.linkType || 'single' 
+      });
       setShowScrollButton(true);
       setShowContinueSection(true);
     }

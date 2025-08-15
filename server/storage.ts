@@ -31,8 +31,8 @@ export interface IStorage {
   deleteQualityMovieLink(id: number): Promise<void>;
   
   // Ad View Sessions (5 minute timer skip functionality)
-  hasSeenAd(ipAddress: string, shortId: string): Promise<boolean>;
-  recordAdView(ipAddress: string, shortId: string): Promise<void>;
+  hasSeenAd(ipAddress: string, shortId: string, linkType?: string): Promise<boolean>;
+  recordAdView(ipAddress: string, shortId: string, linkType?: string): Promise<void>;
   cleanupExpiredSessions(): Promise<void>;
 }
 
@@ -511,44 +511,66 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Ad View Sessions methods (5-minute timer skip functionality)
-  async hasSeenAd(ipAddress: string, shortId: string): Promise<boolean> {
+  async hasSeenAd(ipAddress: string, shortId: string, linkType: string = 'single'): Promise<boolean> {
     if (!this.supabaseClient) {
       const { supabase } = await import('./supabase-client');
       this.supabaseClient = supabase;
     }
     
-    const now = new Date();
+    // First cleanup expired sessions
+    await this.cleanupExpiredSessions();
+    
+    // Check if there's an active session for this IP and shortId
     const sessions = await this.supabaseClient.select('ad_view_sessions', '*', {
       ip_address: ipAddress,
-      short_id: shortId
+      short_id: shortId,
+      link_type: linkType
     });
     
-    // Check if there's a valid (non-expired) session
-    const validSession = sessions.find((session: any) => new Date(session.expires_at) > now);
-    return !!validSession;
+    if (sessions && sessions.length > 0) {
+      const session = sessions[0];
+      const expiresAt = new Date(session.expires_at);
+      const now = new Date();
+      
+      // If session hasn't expired, user has seen ad recently
+      return now < expiresAt;
+    }
+    
+    return false;
   }
 
-  async recordAdView(ipAddress: string, shortId: string): Promise<void> {
+  async recordAdView(ipAddress: string, shortId: string, linkType: string = 'single'): Promise<void> {
     if (!this.supabaseClient) {
       const { supabase } = await import('./supabase-client');
       this.supabaseClient = supabase;
     }
     
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + 5 * 60 * 1000); // 5 minutes from now
+    const expiresAt = new Date(now.getTime() + (5 * 60 * 1000)); // 5 minutes from now
     
-    // First clean up any existing sessions for this IP + shortId
-    await this.supabaseClient.delete('ad_view_sessions', {
-      ip_address: ipAddress,
-      short_id: shortId
-    });
-    
-    // Record new session
-    await this.supabaseClient.insert('ad_view_sessions', {
+    // Try to update existing session first
+    const existingSessions = await this.supabaseClient.select('ad_view_sessions', '*', {
       ip_address: ipAddress,
       short_id: shortId,
-      expires_at: expiresAt.toISOString()
+      link_type: linkType
     });
+    
+    if (existingSessions && existingSessions.length > 0) {
+      // Update existing session
+      await this.supabaseClient.update('ad_view_sessions', {
+        viewed_at: now.toISOString(),
+        expires_at: expiresAt.toISOString()
+      }, { id: existingSessions[0].id });
+    } else {
+      // Create new session
+      await this.supabaseClient.insert('ad_view_sessions', {
+        ip_address: ipAddress,
+        short_id: shortId,
+        link_type: linkType,
+        viewed_at: now.toISOString(),
+        expires_at: expiresAt.toISOString()
+      });
+    }
   }
 
   async cleanupExpiredSessions(): Promise<void> {
@@ -558,12 +580,25 @@ export class DatabaseStorage implements IStorage {
     }
     
     const now = new Date();
-    // Delete all expired sessions
-    const allSessions = await this.supabaseClient.select('ad_view_sessions');
-    const expiredSessions = allSessions.filter((session: any) => new Date(session.expires_at) <= now);
-    
-    for (const session of expiredSessions) {
-      await this.supabaseClient.delete('ad_view_sessions', { id: session.id });
+    // Delete expired sessions using raw SQL query through supabase client
+    try {
+      // Get all expired sessions first
+      const expiredSessions = await this.supabaseClient.select('ad_view_sessions', 'id', {});
+      
+      if (expiredSessions && expiredSessions.length > 0) {
+        // Filter expired sessions on the client side since we can't do date comparison directly in REST API
+        for (const session of expiredSessions) {
+          const fullSession = await this.supabaseClient.select('ad_view_sessions', '*', { id: session.id });
+          if (fullSession && fullSession[0]) {
+            const expiresAt = new Date(fullSession[0].expires_at);
+            if (now > expiresAt) {
+              await this.supabaseClient.delete('ad_view_sessions', { id: session.id });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error cleaning up expired sessions:', error);
     }
   }
 }
