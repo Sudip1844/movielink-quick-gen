@@ -57,6 +57,7 @@ const AdminPanel = () => {
   const [editQuality480p, setEditQuality480p] = useState("");
   const [editQuality720p, setEditQuality720p] = useState("");
   const [editQuality1080p, setEditQuality1080p] = useState("");
+  const [editQualityAdsEnabled, setEditQualityAdsEnabled] = useState(true);
   
   // Admin Settings states removed - credentials now managed only via Supabase
 
@@ -305,6 +306,7 @@ const AdminPanel = () => {
     setEditQuality480p(link.quality480p || link.quality_480p || "");
     setEditQuality720p(link.quality720p || link.quality_720p || "");
     setEditQuality1080p(link.quality1080p || link.quality_1080p || "");
+    setEditQualityAdsEnabled(link.ads_enabled !== undefined ? link.ads_enabled : link.adsEnabled !== undefined ? link.adsEnabled : true);
     setIsEditQualityDialogOpen(true);
   };
 
@@ -334,6 +336,7 @@ const AdminPanel = () => {
         quality480p: editQuality480p.trim() || null,
         quality720p: editQuality720p.trim() || null,
         quality1080p: editQuality1080p.trim() || null,
+        adsEnabled: editQualityAdsEnabled,
       };
 
       await updateQualityMovieLinkMutation.mutateAsync({
@@ -1339,11 +1342,11 @@ const AdminPanel = () => {
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label>Movie Name</Label>
-                <Input value={editingLink?.movieName || ""} readOnly />
+                <Input value={editingLink?.movie_name || editingLink?.movieName || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label>Short ID</Label>
-                <Input value={editingLink?.shortId || ""} readOnly />
+                <Input value={editingLink?.short_id || editingLink?.shortId || ""} readOnly />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="editOriginalLink">Original Link</Label>
@@ -1420,6 +1423,16 @@ const AdminPanel = () => {
                   onChange={(e) => setEditQuality1080p(e.target.value)}
                   placeholder="Enter 1080p download link (optional)"
                 />
+              </div>
+              <div className="flex items-center space-x-2 pb-2">
+                <Switch
+                  id="editQualityAdsEnabled"
+                  checked={editQualityAdsEnabled}
+                  onCheckedChange={setEditQualityAdsEnabled}
+                />
+                <Label htmlFor="editQualityAdsEnabled" className="text-sm">
+                  Enable Ads
+                </Label>
               </div>
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => setIsEditQualityDialogOpen(false)}>
