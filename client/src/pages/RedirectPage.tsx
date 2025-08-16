@@ -29,6 +29,14 @@ const RedirectPage = () => {
     },
   });
 
+  const updateEpisodeViewsMutation = useMutation({
+    mutationFn: async (shortId: string) => {
+      return apiRequest(`/api/quality-episodes/${shortId}/views`, {
+        method: "PATCH",
+      });
+    },
+  });
+
   // Record ad view mutation (called when timer completes)
   const recordAdViewMutation = useMutation({
     mutationFn: async (data: { shortId: string; linkType: string }) => {
@@ -64,6 +72,8 @@ const RedirectPage = () => {
           if (parsedData.adsEnabled && !parsedData.skipTimer) {
             if (parsedData.linkType === "quality") {
               updateQualityViewsMutation.mutate(parsedData.shortId);
+            } else if (parsedData.linkType === "episode") {
+              updateEpisodeViewsMutation.mutate(parsedData.shortId);
             } else {
               updateSingleViewsMutation.mutate(parsedData.shortId);
             }
@@ -71,8 +81,8 @@ const RedirectPage = () => {
 
           // If ads are disabled OR user has already seen ad, skip timer
           if (!parsedData.adsEnabled || parsedData.skipTimer) {
-            if (parsedData.linkType === "quality") {
-              // For quality links without ads or with timer skip, show quality options
+            if (parsedData.linkType === "quality" || parsedData.linkType === "episode") {
+              // For quality links or episodes without ads or with timer skip, show options
               setCountdown(0);
               setShowContinueSection(true);
               setIsLoading(false);
@@ -175,7 +185,7 @@ const RedirectPage = () => {
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
         <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)' }}>
           <h1 style={{ fontSize: '1.8rem', marginBottom: '15px', color: '#333' }}>Link Not Found</h1>
-          <p style={{ color: '#666', fontSize: '1rem', marginBottom: '25px' }}>The requested link could not be found or has expired.</p>
+          <p style={{ color: '#666', fontSize: '1rem' }}>The requested link could not be found or has expired.</p>
         </div>
       </div>
     );
