@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { MovieLink, InsertMovieLink, ApiToken, InsertApiToken, QualityEpisode, InsertQualityEpisode } from "@shared/schema";
+import type { MovieLink, InsertMovieLink, ApiToken, InsertApiToken, QualityEpisode, InsertQualityEpisode, QualityZip, InsertQualityZip } from "@shared/schema";
 
 const AdminPanel = () => {
   const [, setLocation] = useLocation();
@@ -60,9 +60,19 @@ const AdminPanel = () => {
   const [episodeAdsEnabled, setEpisodeAdsEnabled] = useState(true);
   const [generatedEpisodeLink, setGeneratedEpisodeLink] = useState("");
   
+  // Quality Zip states
+  const [zipMovieName, setZipMovieName] = useState("");
+  const [fromEpisode, setFromEpisode] = useState("");
+  const [toEpisode, setToEpisode] = useState("");
+  const [zipQuality480p, setZipQuality480p] = useState("");
+  const [zipQuality720p, setZipQuality720p] = useState("");
+  const [zipQuality1080p, setZipQuality1080p] = useState("");
+  const [zipAdsEnabled, setZipAdsEnabled] = useState(true);
+  const [generatedZipLink, setGeneratedZipLink] = useState("");
+  
   // API Token states
   const [tokenName, setTokenName] = useState("");
-  const [tokenType, setTokenType] = useState<"single" | "quality" | "episode">("single");
+  const [tokenType, setTokenType] = useState<"single" | "quality" | "episode" | "zip">("single");
   const [isTokenDialogOpen, setIsTokenDialogOpen] = useState(false);
   const [generatedToken, setGeneratedToken] = useState("");
   const [editingToken, setEditingToken] = useState<any | null>(null);
@@ -88,6 +98,17 @@ const AdminPanel = () => {
     quality1080p: string;
   }>>([]);
   const [editEpisodeAdsEnabled, setEditEpisodeAdsEnabled] = useState(true);
+  
+  // Quality Zip editing states
+  const [editingQualityZip, setEditingQualityZip] = useState<any | null>(null);
+  const [isEditZipDialogOpen, setIsEditZipDialogOpen] = useState(false);
+  const [editZipMovieName, setEditZipMovieName] = useState("");
+  const [editZipFromEpisode, setEditZipFromEpisode] = useState("");
+  const [editZipToEpisode, setEditZipToEpisode] = useState("");
+  const [editZipQuality480p, setEditZipQuality480p] = useState("");
+  const [editZipQuality720p, setEditZipQuality720p] = useState("");
+  const [editZipQuality1080p, setEditZipQuality1080p] = useState("");
+  const [editZipAdsEnabled, setEditZipAdsEnabled] = useState(true);
   
   // Admin Settings states removed - credentials now managed only via Supabase
 
@@ -122,6 +143,11 @@ const AdminPanel = () => {
   // Fetch quality episodes from API
   const { data: qualityEpisodes = [], isLoading: isEpisodesLoading } = useQuery({
     queryKey: ["/api/quality-episodes"],
+  });
+
+  // Fetch quality zips from API
+  const { data: qualityZips = [], isLoading: isZipsLoading } = useQuery({
+    queryKey: ["/api/quality-zips"],
   });
 
   // Fetch API tokens
@@ -168,6 +194,19 @@ const AdminPanel = () => {
     },
   });
 
+  // Create quality zip mutation
+  const createQualityZipMutation = useMutation({
+    mutationFn: async (data: InsertQualityZip) => {
+      return apiRequest("/api/quality-zips", {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-zips"] });
+    },
+  });
+
   // Update quality episode mutation
   const updateQualityEpisodeMutation = useMutation({
     mutationFn: async ({ id, episodeData }: { id: number; episodeData: any }) => {
@@ -194,6 +233,31 @@ const AdminPanel = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quality-episodes"] });
+    },
+  });
+
+  // Update quality zip mutation
+  const updateQualityZipMutation = useMutation({
+    mutationFn: async ({ id, zipData }: { id: number; zipData: any }) => {
+      return apiRequest(`/api/quality-zips/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(zipData),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-zips"] });
+    },
+  });
+
+  // Delete quality zip mutation
+  const deleteQualityZipMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return apiRequest(`/api/quality-zips/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-zips"] });
     },
   });
 
@@ -649,6 +713,194 @@ const AdminPanel = () => {
     }
   };
 
+  // Quality Zip handlers
+  const handleGenerateZipLink = async () => {
+    if (!zipMovieName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a movie name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!fromEpisode.trim() || !toEpisode.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter both from and to episode numbers",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fromEp = parseInt(fromEpisode);
+    const toEp = parseInt(toEpisode);
+    if (fromEp >= toEp) {
+      toast({
+        title: "Error",
+        description: "From episode must be less than to episode",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if at least one quality link is provided
+    if (!zipQuality480p.trim() && !zipQuality720p.trim() && !zipQuality1080p.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one quality link",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const shortId = generateShortId();
+    try {
+      const qualityZip = await createQualityZipMutation.mutateAsync({
+        movieName: zipMovieName.trim(),
+        shortId,
+        fromEpisode: fromEp,
+        toEpisode: toEp,
+        quality480p: zipQuality480p.trim() || undefined,
+        quality720p: zipQuality720p.trim() || undefined,
+        quality1080p: zipQuality1080p.trim() || undefined,
+        adsEnabled: zipAdsEnabled,
+      });
+
+      const shortUrl = `${window.location.origin}/z/${shortId}`;
+      setGeneratedZipLink(shortUrl);
+      
+      toast({
+        title: "Success",
+        description: "Quality zip link created successfully!",
+      });
+
+      // Reset form
+      setZipMovieName("");
+      setFromEpisode("");
+      setToEpisode("");
+      setZipQuality480p("");
+      setZipQuality720p("");
+      setZipQuality1080p("");
+      setZipAdsEnabled(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create quality zip link",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditQualityZip = (zip: any) => {
+    setEditingQualityZip(zip);
+    setEditZipMovieName(zip.movie_name || zip.movieName || "");
+    setEditZipFromEpisode(String(zip.from_episode || zip.fromEpisode || ""));
+    setEditZipToEpisode(String(zip.to_episode || zip.toEpisode || ""));
+    setEditZipQuality480p(zip.quality_480p || zip.quality480p || "");
+    setEditZipQuality720p(zip.quality_720p || zip.quality720p || "");
+    setEditZipQuality1080p(zip.quality_1080p || zip.quality1080p || "");
+    setEditZipAdsEnabled(zip.ads_enabled !== undefined ? zip.ads_enabled : zip.adsEnabled !== undefined ? zip.adsEnabled : true);
+    setIsEditZipDialogOpen(true);
+  };
+
+  const handleUpdateQualityZip = async () => {
+    if (!editingQualityZip) {
+      toast({
+        title: "Error",
+        description: "No zip selected for editing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editZipMovieName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a movie name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editZipFromEpisode.trim() || !editZipToEpisode.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter both from and to episode numbers",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const fromEp = parseInt(editZipFromEpisode);
+    const toEp = parseInt(editZipToEpisode);
+    if (fromEp >= toEp) {
+      toast({
+        title: "Error",
+        description: "From episode must be less than to episode",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Check if at least one quality link is provided
+    if (!editZipQuality480p.trim() && !editZipQuality720p.trim() && !editZipQuality1080p.trim()) {
+      toast({
+        title: "Error",
+        description: "Please provide at least one quality link",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const zipData = {
+        movieName: editZipMovieName.trim(),
+        fromEpisode: fromEp,
+        toEpisode: toEp,
+        quality480p: editZipQuality480p.trim() || null,
+        quality720p: editZipQuality720p.trim() || null,
+        quality1080p: editZipQuality1080p.trim() || null,
+        adsEnabled: editZipAdsEnabled,
+      };
+
+      await updateQualityZipMutation.mutateAsync({
+        id: editingQualityZip.id,
+        zipData,
+      });
+      
+      toast({
+        title: "Updated",
+        description: "Quality zip updated successfully!",
+      });
+      setIsEditZipDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update quality zip",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteQualityZip = async (id: number) => {
+    if (confirm("Are you sure you want to delete this quality zip?")) {
+      try {
+        await deleteQualityZipMutation.mutateAsync(id);
+        toast({
+          title: "Deleted",
+          description: "Quality zip deleted successfully!",
+        });
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Failed to delete quality zip",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   const handleGenerateLink = async () => {
     if (!movieName.trim() || !originalLink.trim()) {
       toast({
@@ -774,6 +1026,16 @@ const AdminPanel = () => {
     setGeneratedEpisodeLink("");
   };
 
+  const handleCopyZipLink = () => {
+    navigator.clipboard.writeText(generatedZipLink);
+    toast({
+      title: "Copied",
+      description: "Quality zip link copied to clipboard!",
+    });
+    // Clear the generated link after copying
+    setGeneratedZipLink("");
+  };
+
   const handleDeleteLink = async (id: number) => {
     try {
       await deleteMovieLinkMutation.mutateAsync(id);
@@ -853,8 +1115,8 @@ const AdminPanel = () => {
       }
     });
 
-  // Combine single, quality, and episode links for calculations
-  const allLinks = [...(movieLinks as any[]), ...(qualityMovieLinks as any[]), ...(qualityEpisodes as any[])];
+  // Combine single, quality, episode, and zip links for calculations
+  const allLinks = [...(movieLinks as any[]), ...(qualityMovieLinks as any[]), ...(qualityEpisodes as any[]), ...(qualityZips as any[])];
   
   const totalViews = allLinks.reduce((sum, link) => sum + (link?.views || 0), 0);
   
@@ -897,6 +1159,12 @@ const AdminPanel = () => {
       linkType: 'episode',
       name: link.series_name || link.seriesName,
       url_prefix: '/e/'
+    })),
+    ...((qualityZips as any[]) || []).map((link: any) => ({ 
+      ...link, 
+      linkType: 'zip',
+      name: link.movie_name || link.movieName,
+      url_prefix: '/z/'
     }))
   ]
     .slice()
@@ -966,10 +1234,11 @@ const AdminPanel = () => {
             <Card>
               <CardContent className="p-6">
                 <Tabs defaultValue="single" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-6">
-                    <TabsTrigger value="single">Single Link</TabsTrigger>
-                    <TabsTrigger value="quality">Quality Links</TabsTrigger>
-                    <TabsTrigger value="episodes">Episodes</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-4 mb-6">
+                    <TabsTrigger value="single">Single</TabsTrigger>
+                    <TabsTrigger value="quality">Quality</TabsTrigger>
+                    <TabsTrigger value="episodes">Ep Quality</TabsTrigger>
+                    <TabsTrigger value="zip">Ep Zip</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="single" className="space-y-4">
@@ -1187,6 +1456,98 @@ const AdminPanel = () => {
                       </div>
                     )}
                   </TabsContent>
+
+                  <TabsContent value="zip" className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="zipMovieName">Movie Name</Label>
+                      <Input
+                        id="zipMovieName"
+                        value={zipMovieName}
+                        onChange={(e) => setZipMovieName(e.target.value)}
+                        placeholder="Enter movie name"
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="fromEpisode">From Episode</Label>
+                        <Input
+                          id="fromEpisode"
+                          type="number"
+                          min={1}
+                          value={fromEpisode}
+                          onChange={(e) => setFromEpisode(e.target.value)}
+                          placeholder="1"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="toEpisode">To Episode</Label>
+                        <Input
+                          id="toEpisode"
+                          type="number"
+                          min={1}
+                          value={toEpisode}
+                          onChange={(e) => setToEpisode(e.target.value)}
+                          placeholder="10"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="zipQuality480p">480p Zip Download Link</Label>
+                      <Input
+                        id="zipQuality480p"
+                        value={zipQuality480p}
+                        onChange={(e) => setZipQuality480p(e.target.value)}
+                        placeholder="Enter 480p zip download link (optional)"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="zipQuality720p">720p Zip Download Link</Label>
+                      <Input
+                        id="zipQuality720p"
+                        value={zipQuality720p}
+                        onChange={(e) => setZipQuality720p(e.target.value)}
+                        placeholder="Enter 720p zip download link (optional)"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="zipQuality1080p">1080p Zip Download Link</Label>
+                      <Input
+                        id="zipQuality1080p"
+                        value={zipQuality1080p}
+                        onChange={(e) => setZipQuality1080p(e.target.value)}
+                        placeholder="Enter 1080p zip download link (optional)"
+                      />
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="zip-ads-toggle"
+                        checked={zipAdsEnabled}
+                        onCheckedChange={setZipAdsEnabled}
+                      />
+                      <Label htmlFor="zip-ads-toggle">Enable Ads (10s timer)</Label>
+                    </div>
+
+                    <Button onClick={handleGenerateZipLink} className="w-full">
+                      Generate Episode Zip Link
+                    </Button>
+
+                    {generatedZipLink && (
+                      <div className="space-y-2">
+                        <Label>Generated Episode Zip Link</Label>
+                        <div className="flex gap-2">
+                          <Input value={generatedZipLink} readOnly />
+                          <Button onClick={handleCopyZipLink} size="icon">
+                            <Copy className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
@@ -1209,9 +1570,11 @@ const AdminPanel = () => {
                                 ? 'bg-purple-100 text-purple-800' 
                                 : link.linkType === 'episode'
                                 ? 'bg-green-100 text-green-800'
+                                : link.linkType === 'zip'
+                                ? 'bg-orange-100 text-orange-800'
                                 : 'bg-blue-100 text-blue-800'
                             }`}>
-                              {link.linkType === 'quality' ? 'Quality' : link.linkType === 'episode' ? 'Episodes' : 'Single'}
+                              {link.linkType === 'quality' ? 'Quality' : link.linkType === 'episode' ? 'Episodes' : link.linkType === 'zip' ? 'Zip' : 'Single'}
                             </span>
                           </div>
                           <p className="text-sm text-muted-foreground truncate">
@@ -1289,10 +1652,11 @@ const AdminPanel = () => {
             <Card>
               <CardContent className="p-6">
                 <Tabs defaultValue="single-links" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3 mb-6">
-                    <TabsTrigger value="single-links">Single Links</TabsTrigger>
-                    <TabsTrigger value="quality-links">Quality Links</TabsTrigger>
-                    <TabsTrigger value="episode-links">Episode Series</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-4 mb-6">
+                    <TabsTrigger value="single-links">Single</TabsTrigger>
+                    <TabsTrigger value="quality-links">Quality</TabsTrigger>
+                    <TabsTrigger value="episode-links">Ep Quality</TabsTrigger>
+                    <TabsTrigger value="zip-links">Ep Zip</TabsTrigger>
                   </TabsList>
 
                   <TabsContent value="single-links">
@@ -1528,6 +1892,90 @@ const AdminPanel = () => {
                       )}
                     </div>
                   </TabsContent>
+
+                  <TabsContent value="zip-links">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="min-w-[150px]">Movie Name</TableHead>
+                            <TableHead className="min-w-[120px]">Episode Range</TableHead>
+                            <TableHead className="min-w-[100px]">Available Qualities</TableHead>
+                            <TableHead className="min-w-[120px]">Short Link</TableHead>
+                            <TableHead className="min-w-[80px]">Views</TableHead>
+                            <TableHead className="hidden xl:table-cell">Date Added</TableHead>
+                            <TableHead className="w-[120px]">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(qualityZips as any[]).map((zip) => (
+                            <TableRow key={zip.id}>
+                              <TableCell className="font-medium">{zip.movie_name || zip.movieName}</TableCell>
+                              <TableCell>
+                                <span className="text-sm bg-gray-100 px-2 py-1 rounded">
+                                  {zip.from_episode || zip.fromEpisode} - {zip.to_episode || zip.toEpisode}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1">
+                                  {(zip.quality_480p && zip.quality_480p.trim()) && <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">480p</span>}
+                                  {(zip.quality_720p && zip.quality_720p.trim()) && <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">720p</span>}
+                                  {(zip.quality_1080p && zip.quality_1080p.trim()) && <span className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">1080p</span>}
+                                  {!(zip.quality_480p?.trim() || zip.quality_720p?.trim() || zip.quality_1080p?.trim()) && (
+                                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-1 rounded">No qualities available</span>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-sm">/z/{zip.short_id || zip.shortId}</code>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      const fullUrl = `${window.location.origin}/z/${zip.short_id || zip.shortId}`;
+                                      navigator.clipboard.writeText(fullUrl);
+                                      toast({
+                                        title: "Copied",
+                                        description: "Quality zip link copied to clipboard!",
+                                      });
+                                    }}
+                                  >
+                                    <Copy className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                              <TableCell className="font-medium">{zip.views}</TableCell>
+                              <TableCell className="hidden xl:table-cell">{new Date(zip.date_added).toLocaleDateString()}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditQualityZip(zip)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => handleDeleteQualityZip(zip.id)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      {(qualityZips as any[]).length === 0 && (
+                        <div className="text-center py-8 text-muted-foreground">
+                          No quality zip links found
+                        </div>
+                      )}
+                    </div>
+                  </TabsContent>
                 </Tabs>
               </CardContent>
             </Card>
@@ -1553,12 +2001,13 @@ const AdminPanel = () => {
                   <select
                     id="tokenType"
                     value={tokenType}
-                    onChange={(e) => setTokenType(e.target.value as "single" | "quality" | "episode")}
+                    onChange={(e) => setTokenType(e.target.value as "single" | "quality" | "episode" | "zip")}
                     className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
                   >
                     <option value="single">Single Links API</option>
                     <option value="quality">Quality Links API</option>
                     <option value="episode">Quality Episodes API</option>
+                    <option value="zip">Quality Zip API</option>
                   </select>
                 </div>
                 <Button 
@@ -1689,10 +2138,11 @@ const AdminPanel = () => {
               <CardContent className="p-6">
                 <h3 className="text-lg font-semibold mb-4">API Usage Instructions</h3>
                 <Tabs defaultValue="single-api" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="single-api">Single</TabsTrigger>
                     <TabsTrigger value="quality-api">Quality</TabsTrigger>
                     <TabsTrigger value="episode-api">Episode</TabsTrigger>
+                    <TabsTrigger value="zip-api">Zip</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="single-api" className="space-y-4 text-sm">
@@ -1809,6 +2259,49 @@ const AdminPanel = () => {
   "seriesName": "Series Title",
   "startFromEpisode": 1,
   "totalEpisodes": 2,
+  "adsEnabled": true
+}`}
+                      </pre>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="zip-api" className="space-y-4 text-sm">
+                    <div>
+                      <h4 className="font-medium mb-2">Endpoint:</h4>
+                      <code className="bg-muted px-2 py-1 rounded">POST /api/create-quality-zip-link</code>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Headers:</h4>
+                      <code className="bg-muted px-2 py-1 rounded">Authorization: Bearer YOUR_ZIP_TOKEN_HERE</code>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Request Body:</h4>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+{`{
+  "movieName": "Movie Title",
+  "fromEpisode": 1,
+  "toEpisode": 10,
+  "quality480p": "http://480p-zip-link.com",
+  "quality720p": "http://720p-zip-link.com",
+  "quality1080p": "http://1080p-zip-link.com"
+}`}
+                      </pre>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">Response:</h4>
+                      <pre className="bg-muted p-3 rounded text-xs overflow-x-auto">
+{`{
+  "success": true,
+  "shortUrl": "https://yoursite.com/z/ghi789",
+  "shortId": "ghi789",
+  "movieName": "Movie Title",
+  "fromEpisode": 1,
+  "toEpisode": 10,
+  "qualities": {
+    "480p": "http://480p-zip-link.com",
+    "720p": "http://720p-zip-link.com",
+    "1080p": "http://1080p-zip-link.com"
+  },
   "adsEnabled": true
 }`}
                       </pre>
@@ -2094,6 +2587,101 @@ const AdminPanel = () => {
                   disabled={updateQualityEpisodeMutation.isPending}
                 >
                   {updateQualityEpisodeMutation.isPending ? "Updating..." : "Update"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Quality Zip Dialog */}
+        <Dialog open={isEditZipDialogOpen} onOpenChange={setIsEditZipDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Quality Zip Link</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Movie Name</Label>
+                <Input 
+                  value={editZipMovieName} 
+                  onChange={(e) => setEditZipMovieName(e.target.value)}
+                  placeholder="Enter movie name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Short ID</Label>
+                <Input value={editingQualityZip?.short_id || editingQualityZip?.shortId || ""} readOnly />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="editZipFromEpisode">From Episode</Label>
+                  <Input
+                    id="editZipFromEpisode"
+                    type="number"
+                    min={1}
+                    value={editZipFromEpisode}
+                    onChange={(e) => setEditZipFromEpisode(e.target.value)}
+                    placeholder="1"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="editZipToEpisode">To Episode</Label>
+                  <Input
+                    id="editZipToEpisode"
+                    type="number"
+                    min={1}
+                    value={editZipToEpisode}
+                    onChange={(e) => setEditZipToEpisode(e.target.value)}
+                    placeholder="10"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editZipQuality480p">480p Zip Download Link</Label>
+                <Input
+                  id="editZipQuality480p"
+                  value={editZipQuality480p}
+                  onChange={(e) => setEditZipQuality480p(e.target.value)}
+                  placeholder="Enter 480p zip download link (optional)"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editZipQuality720p">720p Zip Download Link</Label>
+                <Input
+                  id="editZipQuality720p"
+                  value={editZipQuality720p}
+                  onChange={(e) => setEditZipQuality720p(e.target.value)}
+                  placeholder="Enter 720p zip download link (optional)"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editZipQuality1080p">1080p Zip Download Link</Label>
+                <Input
+                  id="editZipQuality1080p"
+                  value={editZipQuality1080p}
+                  onChange={(e) => setEditZipQuality1080p(e.target.value)}
+                  placeholder="Enter 1080p zip download link (optional)"
+                />
+              </div>
+              <div className="flex items-center space-x-2 pb-2">
+                <Switch
+                  id="editZipAdsEnabled"
+                  checked={editZipAdsEnabled}
+                  onCheckedChange={setEditZipAdsEnabled}
+                />
+                <Label htmlFor="editZipAdsEnabled" className="text-sm">
+                  Enable Ads (10s timer)
+                </Label>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setIsEditZipDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleUpdateQualityZip}
+                  disabled={updateQualityZipMutation.isPending}
+                >
+                  {updateQualityZipMutation.isPending ? "Updating..." : "Update"}
                 </Button>
               </div>
             </div>

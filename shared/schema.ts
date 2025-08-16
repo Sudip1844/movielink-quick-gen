@@ -94,6 +94,28 @@ export const createQualityEpisodeSchema = z.object({
   episodes: z.array(episodeDataSchema).min(1, "At least one episode is required"),
 });
 
+// API request schema for creating quality zip links
+export const createQualityZipSchema = z.object({
+  movieName: z.string().min(1, "Movie name is required"),
+  fromEpisode: z.number().min(1, "From episode must be at least 1"),
+  toEpisode: z.number().min(1, "To episode must be at least 1"),
+  quality480p: z.string().url("Valid URL is required").optional(),
+  quality720p: z.string().url("Valid URL is required").optional(),
+  quality1080p: z.string().url("Valid URL is required").optional(),
+}).refine(
+  (data) => data.quality480p || data.quality720p || data.quality1080p,
+  {
+    message: "At least one quality link is required",
+    path: ["quality480p"]
+  }
+).refine(
+  (data) => data.fromEpisode <= data.toEpisode,
+  {
+    message: "From episode must be less than or equal to To episode",
+    path: ["fromEpisode"]
+  }
+);
+
 // Admin Settings Schema
 export const adminSettings = pgTable("admin_settings", {
   id: bigserial("id", { mode: "number" }).primaryKey(),
@@ -127,12 +149,32 @@ export const qualityEpisodes = pgTable("quality_episodes", {
   adsEnabled: boolean("ads_enabled").notNull().default(true),
 });
 
+export const qualityZips = pgTable("quality_zips", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  movieName: text("movie_name").notNull(),
+  shortId: text("short_id").notNull().unique(),
+  fromEpisode: integer("from_episode").notNull(),
+  toEpisode: integer("to_episode").notNull(),
+  quality480p: text("quality_480p"),
+  quality720p: text("quality_720p"),
+  quality1080p: text("quality_1080p"),
+  views: integer("views").notNull().default(0),
+  dateAdded: timestamp("date_added", { withTimezone: true }).notNull().defaultNow(),
+  adsEnabled: boolean("ads_enabled").notNull().default(true),
+});
+
 export const insertAdViewSessionSchema = createInsertSchema(adViewSessions).omit({
   id: true,
   viewedAt: true,
 });
 
 export const insertQualityEpisodeSchema = createInsertSchema(qualityEpisodes).omit({
+  id: true,
+  views: true,
+  dateAdded: true,
+});
+
+export const insertQualityZipSchema = createInsertSchema(qualityZips).omit({
   id: true,
   views: true,
   dateAdded: true,
@@ -154,3 +196,6 @@ export type InsertQualityEpisode = z.infer<typeof insertQualityEpisodeSchema>;
 export type QualityEpisode = typeof qualityEpisodes.$inferSelect;
 export type EpisodeData = z.infer<typeof episodeDataSchema>;
 export type CreateQualityEpisodeRequest = z.infer<typeof createQualityEpisodeSchema>;
+export type InsertQualityZip = z.infer<typeof insertQualityZipSchema>;
+export type QualityZip = typeof qualityZips.$inferSelect;
+export type CreateQualityZipRequest = z.infer<typeof createQualityZipSchema>;

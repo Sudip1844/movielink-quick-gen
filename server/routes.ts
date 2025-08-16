@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertMovieLinkSchema, createShortLinkSchema, insertQualityMovieLinkSchema, createQualityShortLinkSchema, insertQualityEpisodeSchema, createQualityEpisodeSchema } from "@shared/schema";
+import { insertMovieLinkSchema, createShortLinkSchema, insertQualityMovieLinkSchema, createQualityShortLinkSchema, insertQualityEpisodeSchema, createQualityEpisodeSchema, insertQualityZipSchema, createQualityZipSchema } from "@shared/schema";
 import { z } from "zod";
 import crypto from "crypto";
 
@@ -617,6 +617,152 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== QUALITY ZIP API ROUTES (NEW FEATURE) =====
+  
+  // Universal API endpoint for creating quality zip links
+  app.post("/api/create-quality-zip", authenticateToken, async (req, res) => {
+    try {
+      // Check if token is for zip links
+      const apiToken = (req as any).apiToken;
+      if (apiToken.tokenType !== "zip") {
+        return res.status(403).json({ error: "This token is not authorized for zip creation" });
+      }
+
+      const result = createQualityZipSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ 
+          error: "Invalid data", 
+          details: result.error.issues 
+        });
+      }
+      
+      const { movieName, fromEpisode, toEpisode, quality480p, quality720p, quality1080p } = result.data;
+      
+      // Generate unique short ID
+      let shortId: string;
+      let attempts = 0;
+      do {
+        shortId = generateShortId();
+        const existing = await storage.getQualityZipByShortId(shortId);
+        if (!existing) break;
+        attempts++;
+      } while (attempts < 10);
+      
+      if (attempts >= 10) {
+        return res.status(500).json({ error: "Unable to generate unique short ID" });
+      }
+      
+      // Create the quality zip link
+      const qualityZip = await storage.createQualityZip({
+        movieName,
+        shortId,
+        fromEpisode,
+        toEpisode,
+        quality480p,
+        quality720p,
+        quality1080p,
+        adsEnabled: true, // API-created zips always have ads enabled
+      });
+      
+      // Return the short URL
+      const shortUrl = `${req.protocol}://${req.get('host')}/z/${shortId}`;
+      res.status(201).json({ 
+        shortUrl,
+        shortId,
+        movieName,
+        fromEpisode,
+        toEpisode,
+        qualityCount: [quality480p, quality720p, quality1080p].filter(Boolean).length
+      });
+    } catch (error) {
+      console.error("Error creating quality zip:", error);
+      res.status(500).json({ error: "Failed to create quality zip" });
+    }
+  });
+
+  // Get all quality zips
+  app.get("/api/quality-zips", async (req, res) => {
+    try {
+      const zips = await storage.getQualityZips();
+      res.json(zips);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quality zips" });
+    }
+  });
+
+  // Create a new quality zip (Admin Panel)
+  app.post("/api/quality-zips", async (req, res) => {
+    try {
+      const result = insertQualityZipSchema.safeParse(req.body);
+      if (!result.success) {
+        return res.status(400).json({ error: "Invalid data", details: result.error });
+      }
+      
+      const qualityZip = await storage.createQualityZip(result.data);
+      res.status(201).json(qualityZip);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create quality zip" });
+    }
+  });
+
+  // Get quality zip by short ID
+  app.get("/api/quality-zips/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      const zip = await storage.getQualityZipByShortId(shortId);
+      
+      if (!zip) {
+        return res.status(404).json({ error: "Quality zip not found" });
+      }
+      
+      res.json(zip);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch quality zip" });
+    }
+  });
+
+  // Update quality zip views
+  app.patch("/api/quality-zips/:shortId/views", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      await storage.updateQualityZipViews(shortId);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update views" });
+    }
+  });
+
+  // Update quality zip
+  app.patch("/api/quality-zips/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      const updates = req.body;
+      const updatedZip = await storage.updateQualityZip(id, updates);
+      res.json(updatedZip);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update quality zip" });
+    }
+  });
+
+  // Delete a quality zip
+  app.delete("/api/quality-zips/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID" });
+      }
+      
+      await storage.deleteQualityZip(id);
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete quality zip" });
+    }
+  });
+
   // Helper function to get client IP address
   const getClientIP = (req: any) => {
     return req.headers['x-forwarded-for']?.split(',')[0] || 
@@ -746,6 +892,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error cleaning up expired sessions:", error);
       res.status(500).json({ error: "Failed to cleanup expired sessions" });
+    }
+  });
+
+  // Redirect route for quality zip URLs (/z/)
+  app.get("/z/:shortId", async (req, res) => {
+    try {
+      const { shortId } = req.params;
+      const clientIP = getClientIP(req);
+      
+      // Find the quality zip
+      let qualityZip = await storage.getQualityZipByShortId(shortId);
+      
+      if (!qualityZip) {
+        // For expired/missing zips, redirect to redirect page with error parameter
+        return res.redirect("/redirect?error=expired");
+      }
+
+      // Check if this IP has seen ads for this shortId in the last 5 minutes
+      const hasSeenAd = await storage.hasSeenAd(clientIP, shortId, "zip");
+
+      const linkData: any = {
+        movieName: (qualityZip as any).movie_name || qualityZip.movieName,
+        shortId: (qualityZip as any).short_id || qualityZip.shortId,
+        adsEnabled: (qualityZip as any).ads_enabled || qualityZip.adsEnabled,
+        linkType: "zip",
+        skipTimer: hasSeenAd, // Skip timer if user has seen ad recently
+        fromEpisode: (qualityZip as any).from_episode || qualityZip.fromEpisode,
+        toEpisode: (qualityZip as any).to_episode || qualityZip.toEpisode,
+        qualityLinks: {
+          quality480p: (qualityZip as any).quality_480p || (qualityZip as any).quality480p,
+          quality720p: (qualityZip as any).quality_720p || (qualityZip as any).quality720p,
+          quality1080p: (qualityZip as any).quality_1080p || (qualityZip as any).quality1080p
+        }
+      };
+
+      // Encode link data as URL parameter
+      const encodedLinkData = encodeURIComponent(JSON.stringify(linkData));
+      res.redirect(`/redirect?link=${encodedLinkData}`);
+    } catch (error) {
+      console.error("Error in zip redirect route:", error);
+      res.redirect("/redirect?error=expired");
     }
   });
 

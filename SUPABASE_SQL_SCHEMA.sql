@@ -1,11 +1,13 @@
 -- MovieZone Complete SQL Schema for Supabase
 -- Run these commands in your Supabase SQL Editor
+-- Updated with Quality Zip feature (2025-08-16)
 
 -- 1. Drop existing tables if they exist (to avoid conflicts)
 DROP TABLE IF EXISTS movie_links CASCADE;
 DROP TABLE IF EXISTS api_tokens CASCADE;
 DROP TABLE IF EXISTS quality_movie_links CASCADE;
 DROP TABLE IF EXISTS quality_episodes CASCADE;
+DROP TABLE IF EXISTS quality_zips CASCADE;
 DROP TABLE IF EXISTS admin_settings CASCADE;
 DROP TABLE IF EXISTS ad_view_sessions CASCADE;
 
@@ -45,18 +47,33 @@ CREATE TABLE quality_episodes (
     ads_enabled BOOLEAN NOT NULL DEFAULT true
 );
 
--- 5. Create api_tokens table for secure authentication
+-- 5. Create quality_zips table for episode range downloads (NEW FEATURE)
+CREATE TABLE quality_zips (
+    id BIGSERIAL PRIMARY KEY,
+    movie_name TEXT NOT NULL,
+    short_id TEXT NOT NULL UNIQUE,
+    from_episode INTEGER NOT NULL,
+    to_episode INTEGER NOT NULL,
+    quality_480p TEXT, -- URL for 480p quality (optional)
+    quality_720p TEXT, -- URL for 720p quality (optional)
+    quality_1080p TEXT, -- URL for 1080p quality (optional)
+    views INTEGER NOT NULL DEFAULT 0,
+    date_added TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    ads_enabled BOOLEAN NOT NULL DEFAULT true
+);
+
+-- 6. Create api_tokens table for secure authentication
 CREATE TABLE api_tokens (
     id BIGSERIAL PRIMARY KEY,
     token_name TEXT NOT NULL,
     token_value TEXT NOT NULL UNIQUE,
-    token_type TEXT NOT NULL DEFAULT 'single', -- 'single', 'quality', or 'episode'
+    token_type TEXT NOT NULL DEFAULT 'single', -- 'single', 'quality', 'episode', or 'zip'
     is_active BOOLEAN NOT NULL DEFAULT true,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     last_used TIMESTAMP WITH TIME ZONE
 );
 
--- 6. Create admin_settings table for login credentials
+-- 7. Create admin_settings table for login credentials
 CREATE TABLE admin_settings (
     id BIGSERIAL PRIMARY KEY,
     admin_id TEXT NOT NULL UNIQUE,
@@ -64,23 +81,25 @@ CREATE TABLE admin_settings (
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
--- 7. Create ad_view_sessions table for IP-based timer skip system (5-minute skip)
+-- 8. Create ad_view_sessions table for IP-based timer skip system (5-minute skip)
 CREATE TABLE ad_view_sessions (
     id BIGSERIAL PRIMARY KEY,
     ip_address TEXT NOT NULL,
     short_id TEXT NOT NULL,
-    link_type TEXT NOT NULL DEFAULT 'single', -- 'single' or 'quality'
+    link_type TEXT NOT NULL DEFAULT 'single', -- 'single', 'quality', 'episode', or 'zip'
     viewed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     expires_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT (NOW() + INTERVAL '5 minutes')
 );
 
--- 8. Create indexes for better performance (after all tables are created)
+-- 9. Create indexes for better performance (after all tables are created)
 CREATE INDEX idx_movie_links_short_id ON movie_links(short_id);
 CREATE INDEX idx_movie_links_date_added ON movie_links(date_added DESC);
 CREATE INDEX idx_quality_movie_links_short_id ON quality_movie_links(short_id);
 CREATE INDEX idx_quality_movie_links_date_added ON quality_movie_links(date_added DESC);
 CREATE INDEX idx_quality_episodes_short_id ON quality_episodes(short_id);
 CREATE INDEX idx_quality_episodes_date_added ON quality_episodes(date_added DESC);
+CREATE INDEX idx_quality_zips_short_id ON quality_zips(short_id);
+CREATE INDEX idx_quality_zips_date_added ON quality_zips(date_added DESC);
 CREATE INDEX idx_api_tokens_token_value ON api_tokens(token_value);
 CREATE INDEX idx_api_tokens_active ON api_tokens(is_active);
 CREATE INDEX idx_ad_view_sessions_ip ON ad_view_sessions(ip_address);
@@ -90,21 +109,23 @@ CREATE INDEX idx_ad_view_sessions_short_id ON ad_view_sessions(short_id);
 -- Create unique constraint to prevent duplicate sessions for same IP and link
 CREATE UNIQUE INDEX idx_ad_view_sessions_unique ON ad_view_sessions(ip_address, short_id, link_type);
 
--- 9. Insert default admin credentials
+-- 10. Insert default admin credentials
 INSERT INTO admin_settings (admin_id, admin_password) 
 VALUES ('sbiswas1844', 'save@184455') 
 ON CONFLICT (admin_id) DO NOTHING;
 
--- 10. Insert sample API tokens for testing (you can change these)
+-- 11. Insert sample API tokens for testing (you can change these)
 INSERT INTO api_tokens (token_name, token_value, token_type, is_active) VALUES
 ('Single Bot Token', 'moviezone_single_bot_token_2025_secure', 'single', true),
 ('Quality Bot Token', 'moviezone_quality_bot_token_2025_secure', 'quality', true),
-('Episode Bot Token', 'moviezone_episode_bot_token_2025_secure', 'episode', true);
+('Episode Bot Token', 'moviezone_episode_bot_token_2025_secure', 'episode', true),
+('Zip Bot Token', 'moviezone_zip_bot_token_2025_secure', 'zip', true);
 
--- 11. Enable Row Level Security (RLS) - Optional but recommended
+-- 12. Enable Row Level Security (RLS) - Optional but recommended
 ALTER TABLE movie_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_movie_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_episodes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_zips ENABLE ROW LEVEL SECURITY;
 ALTER TABLE api_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ad_view_sessions ENABLE ROW LEVEL SECURITY;
@@ -135,7 +156,7 @@ CREATE POLICY "Allow public insert to quality_movie_links" ON quality_movie_link
 CREATE POLICY "Allow public delete from quality_movie_links" ON quality_movie_links
     FOR DELETE USING (true);
 
--- 14. Create policies for public access to quality_episodes (NEW FEATURE)
+-- 15. Create policies for public access to quality_episodes (NEW FEATURE)
 CREATE POLICY "Allow public read access to quality_episodes" ON quality_episodes
     FOR SELECT USING (true);
 
@@ -148,7 +169,20 @@ CREATE POLICY "Allow public insert to quality_episodes" ON quality_episodes
 CREATE POLICY "Allow public delete from quality_episodes" ON quality_episodes
     FOR DELETE USING (true);
 
--- 15. Create policies for api_tokens (allow all operations for admin)
+-- 16. Create policies for public access to quality_zips (NEW FEATURE)
+CREATE POLICY "Allow public read access to quality_zips" ON quality_zips
+    FOR SELECT USING (true);
+
+CREATE POLICY "Allow public update views on quality_zips" ON quality_zips
+    FOR UPDATE USING (true);
+
+CREATE POLICY "Allow public insert to quality_zips" ON quality_zips
+    FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Allow public delete from quality_zips" ON quality_zips
+    FOR DELETE USING (true);
+
+-- 17. Create policies for api_tokens (allow all operations for admin)
 CREATE POLICY "Allow read access to api_tokens" ON api_tokens
     FOR SELECT USING (true);
 
@@ -156,6 +190,25 @@ CREATE POLICY "Allow insert access to api_tokens" ON api_tokens
     FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow update access to api_tokens" ON api_tokens
+    FOR UPDATE USING (true);
+
+CREATE POLICY "Allow delete access to api_tokens" ON api_tokens
+    FOR DELETE USING (true);
+
+-- 18. Create policies for admin_settings
+CREATE POLICY "Allow read access to admin_settings" ON admin_settings
+    FOR SELECT USING (true);
+
+CREATE POLICY "Allow update access to admin_settings" ON admin_settings
+    FOR UPDATE USING (true);
+
+-- 19. Create policies for ad_view_sessions
+CREATE POLICY "Allow all access to ad_view_sessions" ON ad_view_sessions
+    FOR ALL USING (true);
+
+-- ===== End of Schema ===== 
+-- All tables created with proper indexes and RLS policies
+-- Remember to update your SUPABASE_SERVICE_ROLE_KEY in .env file
     FOR UPDATE USING (true);
 
 CREATE POLICY "Allow delete access to api_tokens" ON api_tokens

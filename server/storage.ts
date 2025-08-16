@@ -1,4 +1,4 @@
-import { movieLinks, apiTokens, adminSettings, qualityMovieLinks, qualityEpisodes, adViewSessions, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings, type QualityMovieLink, type InsertQualityMovieLink, type QualityEpisode, type InsertQualityEpisode, type AdViewSession, type InsertAdViewSession } from "@shared/schema";
+import { movieLinks, apiTokens, adminSettings, qualityMovieLinks, qualityEpisodes, qualityZips, adViewSessions, type MovieLink, type InsertMovieLink, type ApiToken, type InsertApiToken, type AdminSettings, type InsertAdminSettings, type QualityMovieLink, type InsertQualityMovieLink, type QualityEpisode, type InsertQualityEpisode, type QualityZip, type InsertQualityZip, type AdViewSession, type InsertAdViewSession } from "@shared/schema";
 
 // Storage interface for movie links and API tokens
 export interface IStorage {
@@ -37,6 +37,14 @@ export interface IStorage {
   updateQualityEpisodeViews(shortId: string): Promise<void>;
   updateQualityEpisode(id: number, updates: Partial<InsertQualityEpisode>): Promise<QualityEpisode>;
   deleteQualityEpisode(id: number): Promise<void>;
+  
+  // Quality Zip methods (NEW FEATURE)
+  createQualityZip(zip: InsertQualityZip): Promise<QualityZip>;
+  getQualityZips(): Promise<QualityZip[]>;
+  getQualityZipByShortId(shortId: string): Promise<QualityZip | undefined>;
+  updateQualityZipViews(shortId: string): Promise<void>;
+  updateQualityZip(id: number, updates: Partial<InsertQualityZip>): Promise<QualityZip>;
+  deleteQualityZip(id: number): Promise<void>;
   
   // Ad View Sessions (5 minute timer skip functionality)
   hasSeenAd(ipAddress: string, shortId: string, linkType?: string): Promise<boolean>;
@@ -248,6 +256,31 @@ export class DeprecatedMemStorage implements IStorage {
   }
 
   async deleteQualityEpisode(id: number): Promise<void> {
+    // No-op in memory storage
+  }
+
+  // Quality Zip methods (placeholder for deprecated memory storage)
+  async createQualityZip(insertQualityZip: InsertQualityZip): Promise<QualityZip> {
+    throw new Error("Memory storage doesn't support quality zips");
+  }
+
+  async getQualityZips(): Promise<QualityZip[]> {
+    return [];
+  }
+
+  async getQualityZipByShortId(shortId: string): Promise<QualityZip | undefined> {
+    return undefined;
+  }
+
+  async updateQualityZipViews(shortId: string): Promise<void> {
+    // No-op in memory storage
+  }
+
+  async updateQualityZip(id: number, updates: Partial<InsertQualityZip>): Promise<QualityZip> {
+    throw new Error("Memory storage doesn't support quality zips");
+  }
+
+  async deleteQualityZip(id: number): Promise<void> {
     // No-op in memory storage
   }
 
@@ -721,6 +754,85 @@ export class DatabaseStorage implements IStorage {
       this.supabaseClient = supabase;
     }
     await this.supabaseClient.delete('quality_episodes', { id });
+  }
+
+  // Quality Zip methods (NEW FEATURE)
+  async createQualityZip(insertQualityZip: InsertQualityZip): Promise<QualityZip> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.insert('quality_zips', {
+      movie_name: insertQualityZip.movieName,
+      short_id: insertQualityZip.shortId,
+      from_episode: insertQualityZip.fromEpisode,
+      to_episode: insertQualityZip.toEpisode,
+      quality_480p: insertQualityZip.quality480p || null,
+      quality_720p: insertQualityZip.quality720p || null,
+      quality_1080p: insertQualityZip.quality1080p || null,
+      ads_enabled: insertQualityZip.adsEnabled ?? true,
+    });
+  }
+
+  async getQualityZips(): Promise<QualityZip[]> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    return await this.supabaseClient.select('quality_zips');
+  }
+
+  async getQualityZipByShortId(shortId: string): Promise<QualityZip | undefined> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    const result = await this.supabaseClient.select('quality_zips', '*', { short_id: shortId });
+    return result[0];
+  }
+
+  async updateQualityZipViews(shortId: string): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    // First get current views
+    const current = await this.supabaseClient.select('quality_zips', 'views', { short_id: shortId });
+    if (current[0]) {
+      const newViews = (current[0].views || 0) + 1;
+      await this.supabaseClient.update('quality_zips', { views: newViews }, { short_id: shortId });
+    }
+  }
+
+  async updateQualityZip(id: number, updates: Partial<InsertQualityZip>): Promise<QualityZip> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    
+    const updateData: any = {};
+    if (updates.movieName !== undefined) updateData.movie_name = updates.movieName;
+    if (updates.fromEpisode !== undefined) updateData.from_episode = updates.fromEpisode;
+    if (updates.toEpisode !== undefined) updateData.to_episode = updates.toEpisode;
+    if (updates.quality480p !== undefined) updateData.quality_480p = updates.quality480p || null;
+    if (updates.quality720p !== undefined) updateData.quality_720p = updates.quality720p || null;
+    if (updates.quality1080p !== undefined) updateData.quality_1080p = updates.quality1080p || null;
+    if (updates.adsEnabled !== undefined) updateData.ads_enabled = updates.adsEnabled;
+    
+    const result = await this.supabaseClient.update('quality_zips', updateData, { id });
+    if (!result) {
+      throw new Error("Quality zip not found");
+    }
+    return result;
+  }
+
+  async deleteQualityZip(id: number): Promise<void> {
+    if (!this.supabaseClient) {
+      const { supabase } = await import('./supabase-client');
+      this.supabaseClient = supabase;
+    }
+    await this.supabaseClient.delete('quality_zips', { id });
   }
 }
 
