@@ -209,27 +209,6 @@ CREATE POLICY "Allow all access to ad_view_sessions" ON ad_view_sessions
 -- ===== End of Schema ===== 
 -- All tables created with proper indexes and RLS policies
 -- Remember to update your SUPABASE_SERVICE_ROLE_KEY in .env file
-    FOR UPDATE USING (true);
-
-CREATE POLICY "Allow delete access to api_tokens" ON api_tokens
-    FOR DELETE USING (true);
-
--- 16. Create policies for admin_settings (restricted access)
-CREATE POLICY "Allow read access to admin_settings" ON admin_settings
-    FOR SELECT USING (true);
-
--- 17. Create policies for ad_view_sessions (allow all operations for timer skip)
-CREATE POLICY "Allow read access to ad_view_sessions" ON ad_view_sessions
-    FOR SELECT USING (true);
-
-CREATE POLICY "Allow insert access to ad_view_sessions" ON ad_view_sessions
-    FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "Allow update access to ad_view_sessions" ON ad_view_sessions
-    FOR UPDATE USING (true);
-
-CREATE POLICY "Allow delete access to ad_view_sessions" ON ad_view_sessions
-    FOR DELETE USING (true);
 
 -- 18. Grant necessary permissions for public access
 GRANT ALL ON movie_links TO anon;
@@ -238,6 +217,8 @@ GRANT ALL ON quality_movie_links TO anon;
 GRANT ALL ON quality_movie_links TO authenticated;
 GRANT ALL ON quality_episodes TO anon;
 GRANT ALL ON quality_episodes TO authenticated;
+GRANT ALL ON quality_zips TO anon;
+GRANT ALL ON quality_zips TO authenticated;
 GRANT ALL ON api_tokens TO anon;
 GRANT ALL ON api_tokens TO authenticated;
 GRANT ALL ON admin_settings TO anon;
@@ -250,6 +231,8 @@ GRANT USAGE ON SEQUENCE quality_movie_links_id_seq TO anon;
 GRANT USAGE ON SEQUENCE quality_movie_links_id_seq TO authenticated;
 GRANT USAGE ON SEQUENCE quality_episodes_id_seq TO anon;
 GRANT USAGE ON SEQUENCE quality_episodes_id_seq TO authenticated;
+GRANT USAGE ON SEQUENCE quality_zips_id_seq TO anon;
+GRANT USAGE ON SEQUENCE quality_zips_id_seq TO authenticated;
 GRANT USAGE ON SEQUENCE api_tokens_id_seq TO anon;
 GRANT USAGE ON SEQUENCE api_tokens_id_seq TO authenticated;
 GRANT USAGE ON SEQUENCE admin_settings_id_seq TO anon;
