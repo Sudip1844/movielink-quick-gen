@@ -76,6 +76,19 @@ const AdminPanel = () => {
   const [editQuality1080p, setEditQuality1080p] = useState("");
   const [editQualityAdsEnabled, setEditQualityAdsEnabled] = useState(true);
   
+  // Quality Episode editing states
+  const [editingQualityEpisode, setEditingQualityEpisode] = useState<any | null>(null);
+  const [isEditEpisodeDialogOpen, setIsEditEpisodeDialogOpen] = useState(false);
+  const [editSeriesName, setEditSeriesName] = useState("");
+  const [editStartFromEpisode, setEditStartFromEpisode] = useState("");
+  const [editEpisodesList, setEditEpisodesList] = useState<Array<{
+    episodeNumber: number;
+    quality480p: string;
+    quality720p: string;
+    quality1080p: string;
+  }>>([]);
+  const [editEpisodeAdsEnabled, setEditEpisodeAdsEnabled] = useState(true);
+  
   // Admin Settings states removed - credentials now managed only via Supabase
 
   useEffect(() => {
@@ -152,6 +165,23 @@ const AdminPanel = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quality-episodes"] });
+    },
+  });
+
+  // Update quality episode mutation
+  const updateQualityEpisodeMutation = useMutation({
+    mutationFn: async ({ id, episodeData }: { id: number; episodeData: any }) => {
+      return apiRequest(`/api/quality-episodes/${id}`, {
+        method: "PATCH",
+        body: JSON.stringify(episodeData),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quality-episodes"] });
+      // Force refresh to ensure UI updates immediately
+      setTimeout(() => {
+        queryClient.refetchQueries({ queryKey: ["/api/quality-episodes"] });
+      }, 100);
     },
   });
 
@@ -428,6 +458,109 @@ const AdminPanel = () => {
           variant: "destructive",
         });
       }
+    }
+  };
+
+  // Quality Episode handlers
+  const handleEditQualityEpisode = (episode: any) => {
+    setEditingQualityEpisode(episode);
+    setEditSeriesName(episode.series_name || episode.seriesName || "");
+    setEditStartFromEpisode(String(episode.start_from_episode || episode.startFromEpisode || 1));
+    
+    try {
+      const episodeList = JSON.parse(episode.episodes);
+      setEditEpisodesList(episodeList);
+    } catch (error) {
+      setEditEpisodesList([{
+        episodeNumber: 1,
+        quality480p: "",
+        quality720p: "",
+        quality1080p: ""
+      }]);
+    }
+    
+    setEditEpisodeAdsEnabled(episode.ads_enabled !== undefined ? episode.ads_enabled : episode.adsEnabled !== undefined ? episode.adsEnabled : true);
+    setIsEditEpisodeDialogOpen(true);
+  };
+
+  const handleUpdateQualityEpisode = async () => {
+    if (!editingQualityEpisode) {
+      toast({
+        title: "Error",
+        description: "No episode series selected for editing",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!editSeriesName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a series name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate that all episodes have at least one quality link
+    for (const episode of editEpisodesList) {
+      if (!episode.quality480p.trim() && !episode.quality720p.trim() && !episode.quality1080p.trim()) {
+        toast({
+          title: "Error",
+          description: `Episode ${episode.episodeNumber} needs at least one quality link`,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    try {
+      const episodeData = {
+        seriesName: editSeriesName.trim(),
+        startFromEpisode: parseInt(editStartFromEpisode) || 1,
+        episodes: JSON.stringify(editEpisodesList),
+        adsEnabled: editEpisodeAdsEnabled,
+      };
+
+      await updateQualityEpisodeMutation.mutateAsync({
+        id: editingQualityEpisode.id,
+        episodeData,
+      });
+      
+      toast({
+        title: "Updated",
+        description: "Quality episode series updated successfully!",
+      });
+      setIsEditEpisodeDialogOpen(false);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update quality episode series",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditEpisodeChange = (index: number, field: keyof (typeof editEpisodesList)[0], value: string | number) => {
+    setEditEpisodesList(prev => prev.map((episode, i) => 
+      i === index ? { ...episode, [field]: value } : episode
+    ));
+  };
+
+  const handleAddEditEpisode = () => {
+    const startNumber = parseInt(editStartFromEpisode) || 1;
+    const nextEpisodeNumber = Math.max(...editEpisodesList.map(ep => ep.episodeNumber), startNumber - 1) + 1;
+    setEditEpisodesList(prev => [...prev, {
+      episodeNumber: nextEpisodeNumber,
+      quality480p: "",
+      quality720p: "",
+      quality1080p: ""
+    }]);
+  };
+
+  const handleRemoveEditEpisode = (index: number) => {
+    if (editEpisodesList.length > 1) {
+      setEditEpisodesList(prev => prev.filter((_, i) => i !== index));
     }
   };
 
@@ -1365,6 +1498,13 @@ const AdminPanel = () => {
                               <TableCell>
                                 <div className="flex gap-2">
                                   <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEditQualityEpisode(episode)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button
                                     variant="destructive"
                                     size="sm"
                                     onClick={() => {
@@ -1844,6 +1984,116 @@ const AdminPanel = () => {
                   disabled={updateQualityMovieLinkMutation.isPending}
                 >
                   {updateQualityMovieLinkMutation.isPending ? "Updating..." : "Update"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Quality Episode Dialog */}
+        <Dialog open={isEditEpisodeDialogOpen} onOpenChange={setIsEditEpisodeDialogOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Quality Episode Series</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Series Name</Label>
+                <Input 
+                  value={editSeriesName} 
+                  onChange={(e) => setEditSeriesName(e.target.value)}
+                  placeholder="Enter series/movie name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Short ID</Label>
+                <Input value={editingQualityEpisode?.short_id || editingQualityEpisode?.shortId || ""} readOnly />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="editStartFromEpisode">Start From Episode</Label>
+                <Input
+                  id="editStartFromEpisode"
+                  type="number"
+                  min={1}
+                  value={editStartFromEpisode}
+                  onChange={(e) => setEditStartFromEpisode(e.target.value)}
+                  placeholder="Starting episode number"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Episodes ({editEpisodesList.length})</Label>
+                  <Button onClick={handleAddEditEpisode} variant="outline" size="sm">
+                    Add Episode
+                  </Button>
+                </div>
+                
+                {editEpisodesList.map((episode, index) => (
+                  <div key={index} className="border rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="font-semibold">Episode {episode.episodeNumber}</Label>
+                      {editEpisodesList.length > 1 && (
+                        <Button 
+                          onClick={() => handleRemoveEditEpisode(index)}
+                          variant="destructive" 
+                          size="sm"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>480p Download Link</Label>
+                      <Input
+                        value={episode.quality480p}
+                        onChange={(e) => handleEditEpisodeChange(index, 'quality480p', e.target.value)}
+                        placeholder="480p download link"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>720p Download Link</Label>
+                      <Input
+                        value={episode.quality720p}
+                        onChange={(e) => handleEditEpisodeChange(index, 'quality720p', e.target.value)}
+                        placeholder="720p download link"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label>1080p Download Link</Label>
+                      <Input
+                        value={episode.quality1080p}
+                        onChange={(e) => handleEditEpisodeChange(index, 'quality1080p', e.target.value)}
+                        placeholder="1080p download link"
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center space-x-2 pb-2">
+                <Switch
+                  id="editEpisodeAdsEnabled"
+                  checked={editEpisodeAdsEnabled}
+                  onCheckedChange={setEditEpisodeAdsEnabled}
+                />
+                <Label htmlFor="editEpisodeAdsEnabled" className="text-sm">
+                  Enable Ads (10s timer)
+                </Label>
+              </div>
+              
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setIsEditEpisodeDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  onClick={handleUpdateQualityEpisode}
+                  disabled={updateQualityEpisodeMutation.isPending}
+                >
+                  {updateQualityEpisodeMutation.isPending ? "Updating..." : "Update"}
                 </Button>
               </div>
             </div>
