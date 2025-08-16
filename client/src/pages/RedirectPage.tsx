@@ -232,15 +232,15 @@ const RedirectPage = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {episodeList.map((episode: any, index: number) => (
                 <div key={index} style={{ 
-                  border: '2px solid #e0e0e0', 
+                  border: '2px solid #495057', 
                   borderRadius: '12px', 
                   padding: '20px', 
-                  background: '#f9f9f9' 
+                  background: '#343a40' 
                 }}>
                   <h3 style={{ 
                     fontSize: '1.2rem', 
                     marginBottom: '15px', 
-                    color: '#333',
+                    color: 'white',
                     fontWeight: 'bold'
                   }}>
                     Episode {episode.episodeNumber}
@@ -561,7 +561,7 @@ const RedirectPage = () => {
 
           {/* Continue Button Section (Hidden initially) */}
           {showContinueSection && (
-            <div id="downloadSection" style={{ background: 'linear-gradient(135deg, #28a745, #20c997)', color: 'white', textAlign: 'center', padding: '40px', margin: '30px 0', borderRadius: '12px', boxShadow: '0 8px 30px rgba(40, 167, 69, 0.3)' }}>
+            <div id="downloadSection" style={{ background: 'linear-gradient(135deg, #343a40, #495057)', color: 'white', textAlign: 'center', padding: '40px', margin: '30px 0', borderRadius: '12px', boxShadow: '0 8px 30px rgba(52, 58, 64, 0.3)' }}>
               <div style={{ fontSize: '4em', marginBottom: '20px', textAlign: 'center' }}>🎬</div>
               <h2 style={{ color: 'white', fontSize: '1.5em', fontWeight: 'bold', marginBottom: '25px', textAlign: 'center', textShadow: '0 2px 4px rgba(0,0,0,0.3)', margin: '0 0 25px 0' }}>
                 {movieData.linkType === "episode" ? movieData.seriesName : movieData.movieName}

@@ -1465,8 +1465,8 @@ const AdminPanel = () => {
                                     {(() => {
                                       try {
                                         const episodes = JSON.parse(episode.episodes);
-                                        const startEpisode = episode.start_from_episode || episode.startFromEpisode || 1;
-                                        return `${episodes.length} episodes (from ${startEpisode})`;
+                                        const episodeNumbers = episodes.map((ep: any) => ep.episodeNumber).sort((a: number, b: number) => a - b);
+                                        return episodeNumbers.join(', ');
                                       } catch {
                                         return "Invalid episodes data";
                                       }
