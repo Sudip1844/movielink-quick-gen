@@ -73,8 +73,9 @@ A movie link shortening service that allows admins to create short links for mov
     - Users who complete the 10-second timer won't see it again for 5 minutes on the same link from same IP
     - Prevents duplicate view counting when users return to same link within 5 minutes
     - Improves user experience by not forcing repeated ad viewing for quality link browsing
-    - Works for both single and quality movie links with automatic cleanup of expired sessions
+    - Works for ALL link types: single movies, quality movies, episodes, and quality zip links
     - IP-based tracking ensures fair ad viewing while allowing quality link exploration
+    - Complete implementation across all redirect routes (/m/, /e/, /z/) with proper API recording
   - **Replit Agent to Replit Migration (2025-08-13)**: Successfully migrated project to standard Replit environment
     - Removed all hardcoded admin credentials from server code and environment files
     - Admin login now exclusively managed through Supabase admin_settings table
