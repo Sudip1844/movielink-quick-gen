@@ -334,7 +334,7 @@ const RedirectPage = () => {
         </div>
       );
     } else if (movieData.linkType === "zip") {
-      // Show no-ads zip selection page based on the screenshot design
+      // Show no-ads zip selection page - simple design
       const availableQualities = Object.entries(movieData.qualityLinks || {})
         .filter(([_, url]) => url)
         .map(([quality, url]) => ({ 
@@ -345,50 +345,46 @@ const RedirectPage = () => {
       return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
           <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)', maxWidth: '500px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            {/* Movie title at top */}
+            <h1 style={{ 
+              fontSize: '2rem', 
+              marginBottom: '20px', 
+              color: '#333',
+              fontWeight: 'bold'
+            }}>
+              {movieData.movieName}
+            </h1>
+            <p style={{ 
+              color: '#666', 
+              fontSize: '1.1rem', 
+              marginBottom: '30px'
+            }}>
+              Choose quality to download episodes {movieData.fromEpisode} to {movieData.toEpisode}:
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
               {availableQualities.map(({ quality, url }, index) => (
-                <div key={index} style={{ textAlign: 'center' }}>
-                  <h1 style={{ 
-                    fontSize: '1.8rem', 
-                    marginBottom: '10px', 
-                    color: '#333',
-                    fontWeight: 'normal'
-                  }}>
-                    {movieData.movieName} <span style={{ color: '#dc3545', fontWeight: 'bold' }}>{quality}</span>
-                  </h1>
-                  <p style={{ 
-                    color: '#666', 
-                    fontSize: '1rem', 
-                    marginBottom: '15px',
-                    fontWeight: 'normal'
-                  }}>
-                    WEB-DL Zip
-                  </p>
-                  <button
-                    onClick={() => handleContinue(url)}
-                    style={{
-                      background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)',
-                      color: 'white',
-                      border: '3px solid #dc3545',
-                      padding: '15px 40px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      fontSize: '1.1rem',
-                      fontWeight: 'bold',
-                      transition: 'transform 0.3s ease',
-                      width: '100%',
-                      minHeight: '60px'
-                    }}
-                    onMouseEnter={(e) => (e.target as HTMLElement).style.transform = 'scale(1.05)'}
-                    onMouseLeave={(e) => (e.target as HTMLElement).style.transform = 'scale(1)'}
-                  >
-                    DOWNLOAD (E{String(movieData.fromEpisode).padStart(2, '0')}-{String(movieData.toEpisode).padStart(2, '0')}) {quality} [{
-                      quality === '480p' ? '590MB' : 
-                      quality === '720p' ? '1.2GB' : 
-                      quality === '1080p' ? '2.7GB' : 'Unknown'
-                    }]
-                  </button>
-                </div>
+                <button
+                  key={index}
+                  onClick={() => handleContinue(url)}
+                  style={{
+                    background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)',
+                    color: 'white',
+                    border: '3px solid #dc3545',
+                    padding: '15px 25px',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '1.1rem',
+                    fontWeight: 'bold',
+                    transition: 'transform 0.3s ease',
+                    width: '100%',
+                    minHeight: '60px'
+                  }}
+                  onMouseEnter={(e) => (e.target as HTMLElement).style.transform = 'scale(1.05)'}
+                  onMouseLeave={(e) => (e.target as HTMLElement).style.transform = 'scale(1)'}
+                >
+                  DOWNLOAD (E{String(movieData.fromEpisode).padStart(2, '0')}-{String(movieData.toEpisode).padStart(2, '0')}) {quality}
+                </button>
               ))}
             </div>
           </div>
@@ -764,55 +760,35 @@ const RedirectPage = () => {
                   ))}
                 </div>
               ) : movieData.linkType === "zip" ? (
-                // Quality zip - show episode zip options matching screenshot design
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignItems: 'center' }}>
+                // Quality zip - simple clean design
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px', alignItems: 'center' }}>
                   <p style={{ color: 'white', fontSize: '1.1em', marginBottom: '20px', textAlign: 'center', margin: '0 0 20px 0' }}>
                     Choose quality to download episodes {movieData.fromEpisode} to {movieData.toEpisode}:
                   </p>
                   {Object.entries(movieData.qualityLinks || {})
                     .filter(([_, url]) => url)
                     .map(([quality, url], index) => (
-                      <div key={index} style={{ textAlign: 'center', width: '100%', maxWidth: '400px' }}>
-                        <h3 style={{ 
-                          color: 'white', 
-                          fontSize: '1.5rem', 
-                          marginBottom: '10px',
-                          fontWeight: 'normal'
-                        }}>
-                          {movieData.movieName} <span style={{ color: '#dc3545', fontWeight: 'bold' }}>{quality.replace('quality', '').replace('p', 'p')}</span>
-                        </h3>
-                        <p style={{ 
-                          color: 'rgba(255,255,255,0.8)', 
-                          fontSize: '1rem', 
-                          marginBottom: '15px',
-                          fontWeight: 'normal'
-                        }}>
-                          WEB-DL Zip
-                        </p>
-                        <button
-                          onClick={() => handleContinue(url as string)}
-                          style={{
-                            background: 'linear-gradient(45deg, #007bff, #0056b3)',
-                            color: 'white',
-                            border: '3px solid #dc3545',
-                            padding: '15px 25px',
-                            fontSize: '1.1rem',
-                            fontWeight: 'bold',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            transition: 'all 0.3s ease',
-                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
-                            width: '100%',
-                            minHeight: '60px'
-                          }}
-                        >
-                          DOWNLOAD (E{String(movieData.fromEpisode).padStart(2, '0')}-{String(movieData.toEpisode).padStart(2, '0')}) {quality.replace('quality', '').replace('p', 'p')} [{
-                            quality === 'quality480p' ? '590MB' : 
-                            quality === 'quality720p' ? '1.2GB' : 
-                            quality === 'quality1080p' ? '2.7GB' : 'Unknown'
-                          }]
-                        </button>
-                      </div>
+                      <button
+                        key={index}
+                        onClick={() => handleContinue(url as string)}
+                        style={{
+                          background: 'linear-gradient(45deg, #007bff, #0056b3)',
+                          color: 'white',
+                          border: '3px solid #dc3545',
+                          padding: '15px 25px',
+                          fontSize: '1.1rem',
+                          fontWeight: 'bold',
+                          borderRadius: '8px',
+                          cursor: 'pointer',
+                          transition: 'all 0.3s ease',
+                          boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                          width: '100%',
+                          maxWidth: '400px',
+                          minHeight: '60px'
+                        }}
+                      >
+                        DOWNLOAD (E{String(movieData.fromEpisode).padStart(2, '0')}-{String(movieData.toEpisode).padStart(2, '0')}) {quality.replace('quality', '').replace('p', 'p')}
+                      </button>
                     ))}
                 </div>
               ) : (
