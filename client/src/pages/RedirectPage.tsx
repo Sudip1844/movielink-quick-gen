@@ -37,6 +37,14 @@ const RedirectPage = () => {
     },
   });
 
+  const updateZipViewsMutation = useMutation({
+    mutationFn: async (shortId: string) => {
+      return apiRequest(`/api/quality-zips/${shortId}/views`, {
+        method: "PATCH",
+      });
+    },
+  });
+
   // Record ad view mutation (called when timer completes)
   const recordAdViewMutation = useMutation({
     mutationFn: async (data: { shortId: string; linkType: string }) => {
@@ -74,6 +82,8 @@ const RedirectPage = () => {
               updateQualityViewsMutation.mutate(parsedData.shortId);
             } else if (parsedData.linkType === "episode") {
               updateEpisodeViewsMutation.mutate(parsedData.shortId);
+            } else if (parsedData.linkType === "zip") {
+              updateZipViewsMutation.mutate(parsedData.shortId);
             } else {
               updateSingleViewsMutation.mutate(parsedData.shortId);
             }
@@ -81,8 +91,8 @@ const RedirectPage = () => {
 
           // If ads are disabled OR user has already seen ad, skip timer
           if (!parsedData.adsEnabled || parsedData.skipTimer) {
-            if (parsedData.linkType === "quality" || parsedData.linkType === "episode") {
-              // For quality links or episodes without ads or with timer skip, show options
+            if (parsedData.linkType === "quality" || parsedData.linkType === "episode" || parsedData.linkType === "zip") {
+              // For quality links, episodes, or zips without ads or with timer skip, show options
               setCountdown(0);
               setShowContinueSection(true);
               setIsLoading(false);
@@ -323,6 +333,67 @@ const RedirectPage = () => {
           </div>
         </div>
       );
+    } else if (movieData.linkType === "zip") {
+      // Show no-ads zip selection page based on the screenshot design
+      const availableQualities = Object.entries(movieData.qualityLinks || {})
+        .filter(([_, url]) => url)
+        .map(([quality, url]) => ({ 
+          quality: quality.replace('quality', '').replace('p', 'p'), 
+          url: url as string 
+        }));
+
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
+          <div style={{ background: 'rgba(255, 255, 255, 0.95)', borderRadius: '15px', padding: '40px', textAlign: 'center', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)', maxWidth: '500px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+              {availableQualities.map(({ quality, url }, index) => (
+                <div key={index} style={{ textAlign: 'center' }}>
+                  <h1 style={{ 
+                    fontSize: '1.8rem', 
+                    marginBottom: '10px', 
+                    color: '#333',
+                    fontWeight: 'normal'
+                  }}>
+                    {movieData.movieName} <span style={{ color: '#dc3545', fontWeight: 'bold' }}>{quality}</span>
+                  </h1>
+                  <p style={{ 
+                    color: '#666', 
+                    fontSize: '1rem', 
+                    marginBottom: '15px',
+                    fontWeight: 'normal'
+                  }}>
+                    WEB-DL Zip
+                  </p>
+                  <button
+                    onClick={() => handleContinue(url)}
+                    style={{
+                      background: 'linear-gradient(135deg, #007bff 0%, #0056b3 100%)',
+                      color: 'white',
+                      border: '3px solid #dc3545',
+                      padding: '15px 40px',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '1.1rem',
+                      fontWeight: 'bold',
+                      transition: 'transform 0.3s ease',
+                      width: '100%',
+                      minHeight: '60px'
+                    }}
+                    onMouseEnter={(e) => (e.target as HTMLElement).style.transform = 'scale(1.05)'}
+                    onMouseLeave={(e) => (e.target as HTMLElement).style.transform = 'scale(1)'}
+                  >
+                    DOWNLOAD (E{String(movieData.fromEpisode).padStart(2, '0')}-{String(movieData.toEpisode).padStart(2, '0')}) {quality} [{
+                      quality === '480p' ? '590MB' : 
+                      quality === '720p' ? '1.2GB' : 
+                      quality === '1080p' ? '2.7GB' : 'Unknown'
+                    }]
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
     } else {
       return (
         <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
@@ -370,7 +441,7 @@ const RedirectPage = () => {
             textShadow: '0 2px 4px rgba(0,0,0,0.3)',
             fontWeight: '500'
           }}>
-            {movieData.linkType === "episode" ? "Series name" : "Movie name"}
+            {movieData.linkType === "episode" ? "Series name" : movieData.linkType === "zip" ? "Episode Collection" : "Movie name"}
           </div>
           
           {/* Movie/Series name */}
@@ -691,6 +762,58 @@ const RedirectPage = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : movieData.linkType === "zip" ? (
+                // Quality zip - show episode zip options matching screenshot design
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignItems: 'center' }}>
+                  <p style={{ color: 'white', fontSize: '1.1em', marginBottom: '20px', textAlign: 'center', margin: '0 0 20px 0' }}>
+                    Choose quality to download episodes {movieData.fromEpisode} to {movieData.toEpisode}:
+                  </p>
+                  {Object.entries(movieData.qualityLinks || {})
+                    .filter(([_, url]) => url)
+                    .map(([quality, url], index) => (
+                      <div key={index} style={{ textAlign: 'center', width: '100%', maxWidth: '400px' }}>
+                        <h3 style={{ 
+                          color: 'white', 
+                          fontSize: '1.5rem', 
+                          marginBottom: '10px',
+                          fontWeight: 'normal'
+                        }}>
+                          {movieData.movieName} <span style={{ color: '#dc3545', fontWeight: 'bold' }}>{quality.replace('quality', '').replace('p', 'p')}</span>
+                        </h3>
+                        <p style={{ 
+                          color: 'rgba(255,255,255,0.8)', 
+                          fontSize: '1rem', 
+                          marginBottom: '15px',
+                          fontWeight: 'normal'
+                        }}>
+                          WEB-DL Zip
+                        </p>
+                        <button
+                          onClick={() => handleContinue(url as string)}
+                          style={{
+                            background: 'linear-gradient(45deg, #007bff, #0056b3)',
+                            color: 'white',
+                            border: '3px solid #dc3545',
+                            padding: '15px 25px',
+                            fontSize: '1.1rem',
+                            fontWeight: 'bold',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            transition: 'all 0.3s ease',
+                            boxShadow: '0 4px 15px rgba(0,0,0,0.2)',
+                            width: '100%',
+                            minHeight: '60px'
+                          }}
+                        >
+                          DOWNLOAD (E{String(movieData.fromEpisode).padStart(2, '0')}-{String(movieData.toEpisode).padStart(2, '0')}) {quality.replace('quality', '').replace('p', 'p')} [{
+                            quality === 'quality480p' ? '590MB' : 
+                            quality === 'quality720p' ? '1.2GB' : 
+                            quality === 'quality1080p' ? '2.7GB' : 'Unknown'
+                          }]
+                        </button>
+                      </div>
+                    ))}
                 </div>
               ) : (
                 // Single movie link - show single button
