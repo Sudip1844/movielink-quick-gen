@@ -76,6 +76,12 @@ A movie link shortening service that allows admins to create short links for mov
     - Works for ALL link types: single movies, quality movies, episodes, and quality zip links
     - IP-based tracking ensures fair ad viewing while allowing quality link exploration
     - Complete implementation across all redirect routes (/m/, /e/, /z/) with proper API recording
+   - **Enhanced Timer Skip System (2025-08-17)**: Fixed navigation back and refresh issues  
+    - Ad view sessions now recorded immediately when redirect page loads (not after timer completion)
+    - Users can navigate back, refresh, or try different qualities without repeated timers
+    - Timer only appears once every 5 minutes per IP address per short link
+    - Fixed display labels to show "Movie Title:" uniformly across all link types
+    - Removed sample API tokens from SQL schema - tokens created through admin panel only
   - **Replit Agent to Replit Migration (2025-08-13)**: Successfully migrated project to standard Replit environment
     - Removed all hardcoded admin credentials from server code and environment files
     - Admin login now exclusively managed through Supabase admin_settings table

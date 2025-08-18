@@ -1,6 +1,13 @@
 -- MovieZone Complete SQL Schema for Supabase
 -- Run these commands in your Supabase SQL Editor
 -- Updated with IP-based Timer Skip Enhancement (2025-08-17)
+-- 
+-- Features included:
+-- - All link types: Single movies, Quality movies, Episodes, Quality zips
+-- - IP-based 5-minute timer skip system with automatic cleanup
+-- - Admin authentication system
+-- - API token management for external integrations
+-- - Complete RLS policies for security
 
 -- 1. Drop existing tables if they exist (to avoid conflicts)
 -- IMPORTANT: This will delete all existing data! Only run if you want to start fresh.
@@ -115,12 +122,8 @@ INSERT INTO admin_settings (admin_id, admin_password)
 VALUES ('sbiswas1844', 'save@184455') 
 ON CONFLICT (admin_id) DO NOTHING;
 
--- 11. Insert sample API tokens for testing (you can change these)
-INSERT INTO api_tokens (token_name, token_value, token_type, is_active) VALUES
-('Single Bot Token', 'moviezone_single_bot_token_2025_secure', 'single', true),
-('Quality Bot Token', 'moviezone_quality_bot_token_2025_secure', 'quality', true),
-('Episode Bot Token', 'moviezone_episode_bot_token_2025_secure', 'episode', true),
-('Zip Bot Token', 'moviezone_zip_bot_token_2025_secure', 'zip', true);
+-- 11. API tokens table is ready for manual creation through admin panel
+-- No sample tokens inserted - create them through the admin interface
 
 -- 12. Enable Row Level Security (RLS) - Optional but recommended
 ALTER TABLE movie_links ENABLE ROW LEVEL SECURITY;
