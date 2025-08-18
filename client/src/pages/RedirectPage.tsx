@@ -87,6 +87,13 @@ const RedirectPage = () => {
             } else {
               updateSingleViewsMutation.mutate(parsedData.shortId);
             }
+            
+            // Record ad view session immediately when ads are enabled and user hasn't seen ad recently
+            // This prevents repeated timers when user navigates back within 5 minutes
+            recordAdViewMutation.mutate({ 
+              shortId: parsedData.shortId, 
+              linkType: parsedData.linkType || 'single' 
+            });
           }
 
           // If ads are disabled OR user has already seen ad, skip timer
@@ -119,11 +126,7 @@ const RedirectPage = () => {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
     } else {
-      // Timer finished - record ad view and show continue section
-      recordAdViewMutation.mutate({ 
-        shortId: movieData.shortId, 
-        linkType: movieData.linkType || 'single' 
-      });
+      // Timer finished - show continue section (ad view already recorded when page loaded)
       setShowScrollButton(true);
       setShowContinueSection(true);
     }
