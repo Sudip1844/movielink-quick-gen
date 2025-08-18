@@ -911,6 +911,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if this IP has seen ads for this shortId in the last 5 minutes
       const hasSeenAd = await storage.hasSeenAd(clientIP, shortId, "zip");
+      console.log(`IP ${clientIP} accessing zip link ${shortId} - hasSeenAd: ${hasSeenAd}`);
 
       const linkData: any = {
         movieName: (qualityZip as any).movie_name || qualityZip.movieName,

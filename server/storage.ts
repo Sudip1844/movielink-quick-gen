@@ -598,26 +598,36 @@ export class DatabaseStorage implements IStorage {
       this.supabaseClient = supabase;
     }
     
-    // First cleanup expired sessions
-    await this.cleanupExpiredSessions();
-    
-    // Check if there's an active session for this IP and shortId
-    const sessions = await this.supabaseClient.select('ad_view_sessions', '*', {
-      ip_address: ipAddress,
-      short_id: shortId,
-      link_type: linkType
-    });
-    
-    if (sessions && sessions.length > 0) {
-      const session = sessions[0];
-      const expiresAt = new Date(session.expires_at);
-      const now = new Date();
+    try {
+      // First cleanup expired sessions
+      await this.cleanupExpiredSessions();
       
-      // If session hasn't expired, user has seen ad recently
-      return now < expiresAt;
+      // Check if there's an active session for this IP and shortId
+      const sessions = await this.supabaseClient.select('ad_view_sessions', '*', {
+        ip_address: ipAddress,
+        short_id: shortId,
+        link_type: linkType
+      });
+      
+      console.log(`hasSeenAd check for IP: ${ipAddress}, shortId: ${shortId}, linkType: ${linkType} - Found ${sessions ? sessions.length : 0} sessions`);
+      
+      if (sessions && sessions.length > 0) {
+        const session = sessions[0];
+        const expiresAt = new Date(session.expires_at);
+        const now = new Date();
+        
+        console.log(`Session found - expires: ${expiresAt.toISOString()}, now: ${now.toISOString()}, hasExpired: ${now >= expiresAt}`);
+        
+        // If session hasn't expired, user has seen ad recently
+        return now < expiresAt;
+      }
+      
+      console.log('No active session found for this IP and shortId');
+      return false;
+    } catch (error) {
+      console.error('Error checking hasSeenAd:', error);
+      return false;
     }
-    
-    return false;
   }
 
   async recordAdView(ipAddress: string, shortId: string, linkType: string = 'single'): Promise<void> {
@@ -626,31 +636,42 @@ export class DatabaseStorage implements IStorage {
       this.supabaseClient = supabase;
     }
     
-    const now = new Date();
-    const expiresAt = new Date(now.getTime() + (5 * 60 * 1000)); // 5 minutes from now
-    
-    // Try to update existing session first
-    const existingSessions = await this.supabaseClient.select('ad_view_sessions', '*', {
-      ip_address: ipAddress,
-      short_id: shortId,
-      link_type: linkType
-    });
-    
-    if (existingSessions && existingSessions.length > 0) {
-      // Update existing session
-      await this.supabaseClient.update('ad_view_sessions', {
-        viewed_at: now.toISOString(),
-        expires_at: expiresAt.toISOString()
-      }, { id: existingSessions[0].id });
-    } else {
-      // Create new session
-      await this.supabaseClient.insert('ad_view_sessions', {
+    try {
+      const now = new Date();
+      const expiresAt = new Date(now.getTime() + (5 * 60 * 1000)); // 5 minutes from now
+      
+      console.log(`Recording ad view for IP: ${ipAddress}, shortId: ${shortId}, linkType: ${linkType}, expires: ${expiresAt.toISOString()}`);
+      
+      // Try to update existing session first
+      const existingSessions = await this.supabaseClient.select('ad_view_sessions', '*', {
         ip_address: ipAddress,
         short_id: shortId,
-        link_type: linkType,
-        viewed_at: now.toISOString(),
-        expires_at: expiresAt.toISOString()
+        link_type: linkType
       });
+      
+      if (existingSessions && existingSessions.length > 0) {
+        // Update existing session
+        console.log(`Updating existing ad view session with ID: ${existingSessions[0].id}`);
+        await this.supabaseClient.update('ad_view_sessions', {
+          viewed_at: now.toISOString(),
+          expires_at: expiresAt.toISOString()
+        }, { id: existingSessions[0].id });
+      } else {
+        // Create new session
+        console.log('Creating new ad view session');
+        await this.supabaseClient.insert('ad_view_sessions', {
+          ip_address: ipAddress,
+          short_id: shortId,
+          link_type: linkType,
+          viewed_at: now.toISOString(),
+          expires_at: expiresAt.toISOString()
+        });
+      }
+      
+      console.log('Ad view recorded successfully');
+    } catch (error) {
+      console.error('Error recording ad view:', error);
+      throw error;
     }
   }
 

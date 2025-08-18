@@ -1,15 +1,16 @@
 -- MovieZone Complete SQL Schema for Supabase
 -- Run these commands in your Supabase SQL Editor
--- Updated with Quality Zip feature (2025-08-16)
+-- Updated with IP-based Timer Skip Enhancement (2025-08-17)
 
 -- 1. Drop existing tables if they exist (to avoid conflicts)
+-- IMPORTANT: This will delete all existing data! Only run if you want to start fresh.
+DROP TABLE IF EXISTS ad_view_sessions CASCADE;
 DROP TABLE IF EXISTS movie_links CASCADE;
 DROP TABLE IF EXISTS api_tokens CASCADE;
 DROP TABLE IF EXISTS quality_movie_links CASCADE;
 DROP TABLE IF EXISTS quality_episodes CASCADE;
 DROP TABLE IF EXISTS quality_zips CASCADE;
 DROP TABLE IF EXISTS admin_settings CASCADE;
-DROP TABLE IF EXISTS ad_view_sessions CASCADE;
 
 -- 2. Create movie_links table with proper Supabase syntax
 CREATE TABLE movie_links (

@@ -437,7 +437,7 @@ const RedirectPage = () => {
             textShadow: '0 2px 4px rgba(0,0,0,0.3)',
             fontWeight: '500'
           }}>
-            {movieData.linkType === "episode" ? "Series name" : movieData.linkType === "zip" ? "Episode Collection" : "Movie name"}
+            Movie Title:
           </div>
           
           {/* Movie/Series name */}
