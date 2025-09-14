@@ -64,13 +64,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      console.log('Admin settings found:', adminSettings);
+      console.log('Admin settings found: [credentials loaded]');
       // Handle both snake_case (Supabase) and camelCase field names
       const response = {
         adminId: (adminSettings as any).admin_id || (adminSettings as any).adminId,
         adminPassword: (adminSettings as any).admin_password || (adminSettings as any).adminPassword
       };
-      console.log('Sending response:', response);
+      console.log('Sending response: [credentials sent]');
       
       res.json(response);
     } catch (error) {
