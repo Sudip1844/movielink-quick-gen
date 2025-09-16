@@ -32,6 +32,7 @@ A movie link shortening service that allows admins to create short links for mov
     - Removed duplicate API endpoint for better code maintenance
     - Implemented proper today's statistics calculation for links and views
     - Added admin configuration API endpoint for secure credential management
+    - Do not use hash password for security issues. Instead use server side admin login details verification instead of sending id password to client.
   - **Supabase Integration (2025-08-12)**:
     - Successfully migrated memory storage to Supabase
     - Implemented Supabase REST API client to bypass network restrictions
