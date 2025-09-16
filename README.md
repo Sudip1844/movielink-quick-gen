@@ -14,40 +14,57 @@ A secure movie link shortening service with Universal API integration for multip
 
 ```
 ├── server/           # Backend Express.js server
+│   ├── .env.example  # Environment template
+│   └── .env         # Your Supabase credentials (create from .env.example)
 ├── client/           # Frontend React application  
 ├── shared/           # Shared TypeScript schemas
-├── env-config.js     # Environment configuration (keep secure!)
 └── DEPLOYMENT_GUIDE.md
 ```
 
 ## 🔧 Setup Instructions
 
-### 1. Environment Configuration
-Copy your credentials to `env-config.js`:
-```javascript
-module.exports = {
-  DATABASE_URL: "your_supabase_database_url",
-  SUPABASE_URL: "your_supabase_project_url",
-  SUPABASE_ANON_KEY: "your_supabase_anon_key",
-  DEFAULT_API_TOKEN: "your_secure_api_token"
-};
+### For Replit (Recommended)
+1. **Import from GitHub**: Import this repository to Replit
+2. **Set Replit Secrets** (Preferred): Add environment variables in Replit Secrets:
+   - `DATABASE_URL`: Your Supabase database URL
+   - `SUPABASE_URL`: Your Supabase project URL  
+   - `SUPABASE_ANON_KEY`: Your Supabase anon key
+   - `SUPABASE_SERVICE_ROLE_KEY`: Your Supabase service role key
+3. **Alternative**: Copy `server/.env.example` to `server/.env` and add your credentials
+4. **Auto-start**: Application starts automatically on port 5000 after credentials are set
+5. **Dependencies**: All packages are pre-configured in package.json
+
+### For Local Development
+1. **Environment Configuration**: Update `server/.env` with your credentials:
+```env
+DATABASE_URL=your_supabase_database_url
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_ANON_KEY=your_supabase_anon_key
+SUPABASE_SERVICE_ROLE_KEY=your_supabase_service_role_key
 ```
 
-### 2. Database Setup
-Run the provided SQL schema in your Supabase SQL Editor.
+2. **Database Setup**: Run the SQL schema from `SUPABASE_SQL_SCHEMA.sql` in your Supabase SQL Editor
 
-### 3. Start Application
+3. **Start Application**:
 ```bash
 npm install
 npm run dev
 ```
 
+### Production Deployment
+```bash
+npm run build
+npm run start
+```
+
 ## 🔐 Security Features
 
-- **Environment Protection** - All sensitive data in `env-config.js`
-- **Token Authentication** - Secure Bearer token system
-- **Database Security** - Row Level Security (RLS) enabled
-- **Input Validation** - Zod schema validation
+- **Environment Protection** - Credentials via Replit Secrets or `server/.env` (never committed)
+- **Server-side Auth** - Plain text admin verification (no client-side password exposure)  
+- **Token Authentication** - Secure Bearer token system for API access
+- **Database Security** - Supabase RLS policies enabled
+- **Input Validation** - Zod schema validation throughout
+- **Key Rotation** - Always use your own Supabase project and rotate keys if importing from public repo
 
 ## 📖 API Documentation
 

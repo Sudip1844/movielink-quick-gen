@@ -147,8 +147,19 @@ A movie link shortening service that allows admins to create short links for mov
 - `PATCH /api/movie-links/:id` - Update movie link original URL
 - `DELETE /api/movie-links/:id` - Delete movie link
 
+## GitHub Import to Replit Setup
+- **Import Ready**: Project structure optimized for Replit imports
+- **Environment Setup**: Use Replit Secrets (preferred) or create `server/.env` from template
+- **Required Secrets**: DATABASE_URL, SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY
+- **Dependencies**: All packages pre-configured in package.json
+- **Workflow**: `npm run dev` starts both frontend and backend on port 5000
+- **Security**: Always use your own Supabase project - rotate keys if importing from public repos
+- **Setup Steps**: 1) Import from GitHub, 2) Create your own Supabase project, 3) Set environment variables, 4) Run application
+
 ## User Preferences
 - Use TypeScript for all new code
-- Prefer in-memory storage unless specifically asked for database persistence
+- Use server/.env file for Supabase integration (create from .env.example template)
 - Follow modern React patterns with hooks and functional components
 - Use wouter for routing instead of React Router
+- Admin login: Server-side verification without password hashing
+- Security: Always use your own Supabase credentials, never commit secrets

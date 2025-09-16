@@ -5,14 +5,6 @@ import * as dotenv from 'dotenv';
 // Load environment variables from server/.env file
 dotenv.config({ path: './server/.env' });
 
-// Load environment configuration if available
-try {
-  require('../env-config.js');
-  console.log('✓ Environment variables loaded from env-config.js');
-} catch (error) {
-  console.log('env-config.js not found, using environment variables');
-}
-
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 

@@ -5,17 +5,7 @@ import { insertMovieLinkSchema, createShortLinkSchema, insertQualityMovieLinkSch
 import { z } from "zod";
 import crypto from "crypto";
 
-// Load environment configuration synchronously
-function loadEnvConfig() {
-  try {
-    return require('../env-config.js');
-  } catch (error) {
-    console.log('env-config.js not found, using environment variables');
-    return {};
-  }
-}
-
-const envConfig = loadEnvConfig();
+// Environment variables are loaded via dotenv in the main entry points
 
 // Authentication middleware for secure API endpoints
 async function authenticateToken(req: Request, res: Response, next: NextFunction) {
