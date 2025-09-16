@@ -65,10 +65,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       console.log('Admin settings found: [credentials loaded]');
-      // Handle both snake_case (Supabase) and camelCase field names
+      // Only return admin ID for frontend, never expose password
       const response = {
         adminId: (adminSettings as any).admin_id || (adminSettings as any).adminId,
-        adminPassword: (adminSettings as any).admin_password || (adminSettings as any).adminPassword
+        hasCredentials: true
       };
       console.log('Sending response: [credentials sent]');
       
@@ -93,12 +93,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updatedSettings = await storage.updateAdminCredentials(adminId, adminPassword);
       res.json({
         adminId: updatedSettings.adminId,
-        adminPassword: updatedSettings.adminPassword,
+        message: "Admin credentials updated successfully",
         updatedAt: updatedSettings.updatedAt
       });
     } catch (error) {
       console.error("Error updating admin config:", error);
       res.status(500).json({ error: "Failed to update admin configuration" });
+    }
+  });
+
+  // Secure admin login endpoint
+  app.post("/api/admin-login", async (req, res) => {
+    try {
+      const { adminId, adminPassword } = req.body;
+      
+      if (!adminId || !adminPassword) {
+        return res.status(400).json({ error: "Admin ID and password are required" });
+      }
+      
+      const adminSettings = await storage.getAdminSettings();
+      if (!adminSettings) {
+        return res.status(401).json({ error: "Authentication failed" });
+      }
+      
+      // Compare credentials server-side (secure)
+      const storedAdminId = (adminSettings as any).admin_id || (adminSettings as any).adminId;
+      const storedPassword = (adminSettings as any).admin_password || (adminSettings as any).adminPassword;
+      
+      if (adminId === storedAdminId && adminPassword === storedPassword) {
+        // Authentication successful
+        res.json({ 
+          success: true, 
+          message: "Authentication successful",
+          adminId: storedAdminId
+        });
+      } else {
+        res.status(401).json({ error: "Invalid credentials" });
+      }
+    } catch (error) {
+      console.error("Error during admin login:", error);
+      res.status(500).json({ error: "Authentication error" });
     }
   });
   

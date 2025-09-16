@@ -2,8 +2,8 @@
 import fetch from 'node-fetch';
 import * as dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
+// Load environment variables from server/.env file
+dotenv.config({ path: './server/.env' });
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://ztorzqnvzxbptmdmaqyi.supabase.co";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;

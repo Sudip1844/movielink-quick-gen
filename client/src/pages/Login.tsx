@@ -6,45 +6,23 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 
-// Admin credentials will be fetched from environment variables
-let ADMIN_CREDENTIALS = {
-  id: "",
-  password: ""
-};
+// Removed global credential storage for security - now using server-side authentication
 
 const Login = () => {
   const [formData, setFormData] = useState({ id: "", password: "" });
   const [isLoading, setIsLoading] = useState(false);
-  const [credentialsLoaded, setCredentialsLoaded] = useState(false);
+  const [loginReady, setLoginReady] = useState(true);
   const [, setLocation] = useLocation();
 
-  // Fetch admin credentials from backend on component mount
-  useEffect(() => {
-    const fetchCredentials = async () => {
-      try {
-        const response = await fetch('/api/admin-config');
-        if (response.ok) {
-          const config = await response.json();
-          ADMIN_CREDENTIALS.id = config.adminId;
-          ADMIN_CREDENTIALS.password = config.adminPassword;
-          setCredentialsLoaded(true);
-        }
-      } catch (error) {
-        console.error('Failed to load admin credentials:', error);
-        setCredentialsLoaded(true); // Still allow component to render
-      }
-    };
-    
-    fetchCredentials();
-  }, []);
+  // No longer fetching credentials to memory - using secure server-side authentication
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!credentialsLoaded) {
+    if (!loginReady) {
       toast({
         title: "Please wait",
-        description: "Loading admin configuration...",
+        description: "System initializing...",
       });
       return;
     }
@@ -54,17 +32,37 @@ const Login = () => {
     // Simulate slight delay for better UX
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    if (formData.id === ADMIN_CREDENTIALS.id && formData.password === ADMIN_CREDENTIALS.password) {
-      localStorage.setItem("moviezone_admin_logged_in", "true");
-      toast({
-        title: "Login Successful",
-        description: "Welcome to MovieZone Admin Panel",
+    try {
+      // Secure server-side authentication
+      const response = await fetch('/api/admin-login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          adminId: formData.id,
+          adminPassword: formData.password
+        })
       });
-      setLocation("/admin");
-    } else {
+      
+      if (response.ok) {
+        localStorage.setItem("moviezone_admin_logged_in", "true");
+        toast({
+          title: "Login Successful",
+          description: "Welcome to MovieZone Admin Panel",
+        });
+        setLocation("/admin");
+      } else {
+        toast({
+          title: "Login Failed",
+          description: "Invalid credentials. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
       toast({
-        title: "Login Failed",
-        description: "Invalid credentials. Please try again.",
+        title: "Login Error",
+        description: "Unable to connect to server. Please try again.",
         variant: "destructive",
       });
     }
