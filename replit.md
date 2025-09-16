@@ -3,17 +3,6 @@
 ## Overview
 A movie link shortening service that allows admins to create short links for movie downloads with optional ad displays. The application consists of an admin panel for link management and a redirect page that handles the short URLs.
 
-## Recent Changes
-- **Migration from Lovable to Replit (2025-01-29)**: Migrated the project from Lovable platform to Replit
-  - Replaced React Router with Wouter for routing
-  - Migrated from Supabase to Replit's PostgreSQL database with Drizzle ORM
-  - Moved client-side localStorage logic to server-side API endpoints
-  - Implemented proper client/server separation for security
-  - Updated all components to use @tanstack/react-query for API calls
-  - Fixed toast notifications to display for only 1 second
-  - Redesigned redirect page with beautiful MovieZone branding
-  - Added persistent PostgreSQL database storage (DatabaseStorage)
-  - Enhanced redirect page with additional movie-related content sections
   - **Redirect Page Optimization (2025-01-29)**: Major improvements to match design specifications
     - Changed timer from 15 seconds to single 10-second countdown
     - Movie name now displays above timer during countdown, hidden after completion
@@ -43,8 +32,8 @@ A movie link shortening service that allows admins to create short links for mov
     - Removed duplicate API endpoint for better code maintenance
     - Implemented proper today's statistics calculation for links and views
     - Added admin configuration API endpoint for secure credential management
-  - **Replit Migration & Supabase Integration (2025-08-12)**: Migrated project from Replit Agent to standard Replit
-    - Successfully migrated from memory storage to Supabase PostgreSQL database
+  - **Supabase Integration (2025-08-12)**:
+    - Successfully migrated memory storage to Supabase
     - Implemented Supabase REST API client to bypass network restrictions
     - All movie links and API tokens now stored permanently in Supabase
     - Database connection established via REST API instead of direct PostgreSQL connection
@@ -142,7 +131,7 @@ A movie link shortening service that allows admins to create short links for mov
 ## Project Architecture
 - **Frontend**: React with TypeScript, Wouter for routing, TanStack Query for state management
 - **Backend**: Express.js server with TypeScript
-- **Database**: PostgreSQL with Drizzle ORM
+- **Database**: Supabase 
 - **Styling**: Tailwind CSS with shadcn/ui components
 
 ### Database Schema
