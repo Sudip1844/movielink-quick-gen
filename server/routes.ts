@@ -55,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       console.log('Fetching admin config from API endpoint...');
       const adminSettings = await storage.getAdminSettings();
-      console.log('Admin settings response:', adminSettings);
+      // Admin settings fetched successfully (credentials not logged for security)
       
       if (!adminSettings) {
         console.log('No admin settings found');

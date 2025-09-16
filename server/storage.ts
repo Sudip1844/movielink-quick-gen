@@ -473,7 +473,7 @@ export class DatabaseStorage implements IStorage {
     try {
       console.log('Fetching admin settings from Supabase...');
       const result = await this.supabaseClient.select('admin_settings');
-      console.log('Admin settings result:', result);
+      // Admin settings fetched from Supabase (credentials not logged for security)
       return result && result.length > 0 ? result[0] : undefined;
     } catch (error) {
       console.error('Error fetching admin settings:', error);

@@ -6,7 +6,11 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://ztorzqnvzxbptmdmaqyi.supabase.co";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp0b3J6cW52enhicHRtZG1hcXlpIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NDkyNjEyNiwiZXhwIjoyMDcwNTAyMTI2fQ.hcYnrfc1A4qdHj2ERRqZ615hqmD0Med6xdPAb2s5Yb0";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!SUPABASE_SERVICE_ROLE_KEY) {
+  throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is required');
+}
 
 const headers = {
   'apikey': SUPABASE_SERVICE_ROLE_KEY,
