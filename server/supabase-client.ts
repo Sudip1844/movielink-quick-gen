@@ -1,37 +1,35 @@
 // Supabase REST API client for database operations
 import fetch from 'node-fetch';
-import * as dotenv from 'dotenv';
-
-// Load environment variables from server/.env file
-dotenv.config({ path: './server/.env' });
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL) {
-  throw new Error('SUPABASE_URL environment variable is required');
-}
+const isSupabaseConfigured = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('SUPABASE_SERVICE_ROLE_KEY environment variable is required');
-}
-
-const headers = {
-  'apikey': SUPABASE_SERVICE_ROLE_KEY,
-  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+const headers: Record<string, string> = isSupabaseConfigured ? {
+  'apikey': SUPABASE_SERVICE_ROLE_KEY!,
+  'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY!}`,
   'Content-Type': 'application/json',
   'Prefer': 'return=representation'
-};
+} : {};
 
 export class SupabaseClient {
   private baseUrl: string;
 
   constructor() {
+    if (!isSupabaseConfigured) {
+      console.warn('⚠️ Supabase not configured - some features may not work');
+      this.baseUrl = '';
+      return;
+    }
     this.baseUrl = `${SUPABASE_URL}/rest/v1`;
     console.log('✓ Supabase REST client initialized');
   }
 
   async query(sql: string): Promise<any> {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured');
+    }
     try {
       const response = await fetch(`${this.baseUrl}/rpc/execute_sql`, {
         method: 'POST',
@@ -51,6 +49,10 @@ export class SupabaseClient {
   }
 
   async select(table: string, columns = '*', where?: any): Promise<any[]> {
+    if (!isSupabaseConfigured) {
+      console.warn('Supabase not configured, returning empty array');
+      return [];
+    }
     try {
       let url = `${this.baseUrl}/${table}?select=${columns}`;
       
@@ -79,6 +81,9 @@ export class SupabaseClient {
   }
 
   async insert(table: string, data: any): Promise<any> {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured');
+    }
     try {
       const response = await fetch(`${this.baseUrl}/${table}`, {
         method: 'POST',
@@ -99,6 +104,9 @@ export class SupabaseClient {
   }
 
   async update(table: string, data: any, where: any): Promise<any> {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured');
+    }
     try {
       const conditions = Object.entries(where)
         .map(([key, value]) => `${key}=eq.${value}`)
@@ -123,6 +131,9 @@ export class SupabaseClient {
   }
 
   async delete(table: string, where: any): Promise<void> {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase not configured');
+    }
     try {
       const conditions = Object.entries(where)
         .map(([key, value]) => `${key}=eq.${value}`)
@@ -143,6 +154,10 @@ export class SupabaseClient {
   }
 
   async testConnection(): Promise<boolean> {
+    if (!isSupabaseConfigured) {
+      console.warn('⚠️ Supabase not configured - connection test skipped');
+      return false;
+    }
     try {
       const response = await fetch(`${this.baseUrl}/movie_links?limit=1`, {
         method: 'GET',
